@@ -7,7 +7,8 @@ export default async function handler(req, res) {
     return;
   }
 
-  const key = process.env.ANTHROPIC_KEY;
+  // Ko'rinmas belgilarni (BOM, bo'shliq, yangi qator) tozalaymiz — kalit faqat ASCII.
+  const key = (process.env.ANTHROPIC_KEY || "").replace(/[^\x21-\x7E]/g, "");
   if (!key) {
     res.status(500).json({ error: "ANTHROPIC_KEY is not configured on the server" });
     return;
