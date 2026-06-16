@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(winget install --id GitHub.cli -e --accept-source-agreements --accept-package-agreements --silent)",
+      "PowerShell($gh = \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\"; if \\(Test-Path $gh\\) { & $gh --version; \"PATH_OK: $gh\" } else { \"not at default path\"; Get-ChildItem \"C:\\\\Program Files\\\\GitHub CLI\" -ErrorAction SilentlyContinue })",
+      "PowerShell($p = \"C:\\\\Users\\\\shaxz\\\\OneDrive\\\\Desktop\\\\Text Document.txt\"; $b = [System.IO.File]::ReadAllText\\($p\\); \"LENGTH: $\\($b.Length\\)\"; \"CONTENT_START>>>\"; $b; \"<<<CONTENT_END\")",
+      "PowerShell(\"=== GitHub Desktop default clone folder ===\"; Get-ChildItem \"$env:USERPROFILE\\\\Documents\\\\GitHub\" -Directory -ErrorAction SilentlyContinue | Select-Object Name, FullName; \"=== git global config ===\"; git config --global --get-all credential.helper; git config --global user.name; git config --global user.email; \"=== Windows Credential Manager \\(github\\) ===\"; cmdkey /list | Select-String -Pattern \"github\" -SimpleMatch)",
+      "Bash(git remote *)",
+      "Bash(export GIT_TERMINAL_PROMPT=0)",
+      "Bash(git push *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git check-ignore *)",
+      "Bash(git commit -q -m 'Move Anthropic key to server-side Vercel function \\(api/chat\\) *)"
+    ]
+  }
+}

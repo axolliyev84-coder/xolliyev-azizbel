@@ -13,20 +13,15 @@ function sSet(k,v){ try{ localStorage.setItem(k,v); }catch{} return Promise.reso
 
 /* ===================== AI ===================== */
 async function callAI(prompt, ground, maxTokens=900){
-  const res = await fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST", headers:{
-      "Content-Type":"application/json",
-      "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY || "",
-      "anthropic-version":"2023-06-01",
-      "anthropic-dangerous-direct-browser-access":"true"
-    },
-    body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:maxTokens,
-      system: "Ты — преподаватель МСФО для начинающего, по-русски, кратко и по делу. "+ground,
-      messages:[{role:"user",content:prompt}] })
+  // Kalit serverda (api/chat.js) saqlanadi — brauzerga umuman chiqmaydi.
+  const res = await fetch("/api/chat",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ prompt, ground, maxTokens })
   });
   if(!res.ok) throw new Error("API "+res.status);
   const data = await res.json();
-  return (data.content||[]).map(b=>b.type==="text"?b.text:"").join("\n");
+  return data.text || "";
 }
 function parseArr(t){
   const c=t.replace(/```json/gi,"").replace(/```/g,"").trim();
