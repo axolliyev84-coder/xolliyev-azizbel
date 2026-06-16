@@ -7,6 +7,9 @@ dist/
 # vercel
 .vercel
 
+# claude code (mahalliy sozlamalar)
+.claude/
+
 # env / maxfiy kalitlar
 .env
 .env.local
