@@ -3,11 +3,14 @@ import {
   BookOpen, Layers, Calculator, ClipboardList, Sparkles, GraduationCap,
   Check, X, RotateCcw, ArrowRight, ArrowLeft, RefreshCw, Loader2, Home,
   Lightbulb, AlertTriangle, ChevronDown, Eye, EyeOff, Trophy, Target,
-  FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool
+  FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
+  Sun, Moon, LogIn, LogOut
 } from "lucide-react";
 
 /* ===================== STORAGE (localStorage) ===================== */
 const PKEY = "mscfo_course_v1";
+const TKEY = "mscfo_theme_v1";
+const UKEY = "mscfo_user_v1";
 function sGet(k){ try{ return Promise.resolve(localStorage.getItem(k)); }catch{ return Promise.resolve(null); } }
 function sSet(k,v){ try{ localStorage.setItem(k,v); }catch{} return Promise.resolve(); }
 
@@ -441,37 +444,77 @@ export default function App(){
   const [tab,setTab]=useState("theory");
   const [prog,setProg]=useState({});
   const [ready,setReady]=useState(false);
+  const [theme,setTheme]=useState("light");
+  const [user,setUser]=useState(null);
+  const [loginOpen,setLoginOpen]=useState(false);
+  const [nameDraft,setNameDraft]=useState("");
 
   useEffect(()=>{(async()=>{ const raw=await sGet(PKEY); if(raw){try{setProg(JSON.parse(raw));}catch{}} setReady(true); })();},[]);
+  useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t);
+    const u=localStorage.getItem(UKEY); if(u){ try{ setUser(JSON.parse(u)); }catch{} } }catch{} },[]);
+
   const save=useCallback(async(p)=>{ setProg(p); await sSet(PKEY,JSON.stringify(p)); },[]);
   function tp(id){ return prog[id]||{cardsKnown:[],quizBest:0,hw:{}}; }
   function setTP(id,patch){ const cur=tp(id); save({...prog,[id]:{...cur,...patch}}); }
+  function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
+  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setLoginOpen(false); setNameDraft(""); }
+  function logout(){ setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
 
-  if(!ready) return <><style>{CSS}</style><div className="cc"><div className="cc-boot"><Loader2 size={20} className="cc-spin"/> Загрузка…</div></div></>;
+  const rootCls = "cc"+(theme==="dark"?" dark":"");
+
+  if(!ready) return <><style>{CSS}</style><div className={rootCls}><div className="cc-boot"><Loader2 size={20} className="cc-spin"/> Загрузка…</div></div></>;
 
   const topic = TMAP[topicId];
 
   return(<>
     <style>{CSS}</style>
-    <div className="cc">
+    <div className={rootCls}>
       <header className="cc-top">
         <button className="cc-brand" onClick={()=>setView("home")}>
-          <span className="cc-brand-m"><GraduationCap size={20}/></span>
-          <span><span className="cc-brand-n">Daftar</span><span className="cc-brand-s">МСФО · курс</span></span>
+          <span className="cc-brand-m"><Sparkles size={19}/></span>
+          <span><span className="cc-brand-n">МСФО ИИ</span><span className="cc-brand-s">репетитор · курс</span></span>
         </button>
-        {view!=="home" && <button className="cc-home-btn" onClick={()=>setView("home")}><Home size={16}/> Темы</button>}
+        <div className="cc-top-r">
+          {view!=="home" && <button className="cc-home-btn" onClick={()=>setView("home")}><Home size={16}/> Темы</button>}
+          <button className="cc-icon-btn" onClick={toggleTheme} title={theme==="dark"?"Светлая тема":"Тёмная тема"} aria-label="Сменить тему">
+            {theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}
+          </button>
+          {user ? (
+            <div className="cc-auth">
+              <span className="cc-avatar">{user.name.charAt(0).toUpperCase()}</span>
+              <span className="cc-auth-name">{user.name}</span>
+              <button className="cc-icon-btn sm" onClick={logout} title="Выйти" aria-label="Выйти"><LogOut size={16}/></button>
+            </div>
+          ) : (
+            <button className="cc-login-btn" onClick={()=>setLoginOpen(true)}><LogIn size={16}/> Войти</button>
+          )}
+        </div>
       </header>
 
-      {view==="home" && <HomeView prog={prog} tp={tp} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
+      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
       {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP}/>}
       {view==="hw" && <HomeworkHub/>}
       {view==="exam" && <ExamView prog={prog} save={save}/>}
+
+      {loginOpen && (
+        <div className="cc-modal-ov" onClick={()=>setLoginOpen(false)}>
+          <div className="cc-modal" onClick={e=>e.stopPropagation()}>
+            <button className="cc-modal-x" onClick={()=>setLoginOpen(false)} aria-label="Закрыть"><X size={18}/></button>
+            <div className="cc-modal-ic"><GraduationCap size={26}/></div>
+            <h2 className="cc-modal-t">Добро пожаловать!</h2>
+            <p className="cc-modal-p">Введите имя, чтобы заниматься под своим профилем. Прогресс сохраняется на этом устройстве.</p>
+            <input className="cc-modal-in" placeholder="Ваше имя" value={nameDraft} maxLength={24} autoFocus
+              onChange={e=>setNameDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
+            <button className="cc-btn primary cc-modal-go" disabled={!nameDraft.trim()} onClick={doLogin}><LogIn size={16}/> Войти</button>
+          </div>
+        </div>
+      )}
     </div>
   </>);
 }
 
 /* ---------- HOME ---------- */
-function HomeView({prog,tp,open,goHw,goExam}){
+function HomeView({prog,tp,user,open,goHw,goExam}){
   const totalCards=TOPICS.reduce((s,t)=>s+t.cards.length,0);
   const knownCards=TOPICS.reduce((s,t)=>s+tp(t.id).cardsKnown.length,0);
   const avgQuiz=Math.round(TOPICS.reduce((s,t)=>s+tp(t.id).quizBest,0)/TOPICS.length);
@@ -479,7 +522,7 @@ function HomeView({prog,tp,open,goHw,goExam}){
   return(
     <main className="cc-main">
       <div className="cc-hero">
-        <div className="cc-kick">Учебный курс</div>
+        <div className="cc-kick">{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
         <h1 className="cc-h1">Что изучаем сегодня?</h1>
         <p className="cc-lead">{SRC}. Выберите тему — внутри теория, карточки для зубрёжки, разобранные задачи, тесты и ИИ-репетитор.</p>
       </div>
@@ -969,5 +1012,62 @@ const CSS=`
   .cc-hwt-r{grid-template-columns:1fr 64px;gap:7px;}
   .cc-hwt-r .c3{grid-column:1/-1;} .cc-hwt-r.head .c3{display:none;}
   .cc-h1{font-size:25px;}
+}
+
+/* ===== header right group, theme toggle, auth ===== */
+.cc-top-r{display:flex;align-items:center;gap:9px;}
+.cc-icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surf);color:var(--ink2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s,border-color .15s;flex:0 0 auto;}
+.cc-icon-btn:hover{background:var(--surf2);color:var(--ink);}
+.cc-icon-btn.sm{width:30px;height:30px;border-radius:8px;}
+.cc-login-btn{display:flex;align-items:center;gap:7px;background:var(--teal);border:0;border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:600;color:#fff;cursor:pointer;font-family:var(--sans);transition:background .15s,transform .1s;}
+.cc-login-btn:hover{background:var(--tealD);}
+.cc-login-btn:active{transform:translateY(1px);}
+.cc-auth{display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--line);border-radius:30px;padding:4px 6px 4px 4px;}
+.cc-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--tealD));color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-family:var(--sans);}
+.cc-auth-name{font-size:13px;font-weight:600;color:var(--ink);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ===== login modal ===== */
+.cc-modal-ov{position:fixed;inset:0;z-index:50;background:rgba(8,14,16,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;animation:ccfade .2s ease;}
+@keyframes ccfade{from{opacity:0;}to{opacity:1;}}
+.cc-modal{position:relative;width:100%;max-width:380px;background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:30px 26px 26px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:ccpop .25s cubic-bezier(.2,.8,.2,1);}
+@keyframes ccpop{from{opacity:0;transform:translateY(10px) scale(.97);}to{opacity:1;transform:none;}}
+.cc-modal-x{position:absolute;top:13px;right:13px;width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--mut);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cc-modal-x:hover{background:var(--surf2);color:var(--ink);}
+.cc-modal-ic{width:56px;height:56px;border-radius:15px;margin:0 auto 14px;background:linear-gradient(135deg,var(--teal),var(--tealD));color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(14,124,107,.28);}
+.cc-modal-t{font-family:var(--serif);font-size:22px;font-weight:600;margin:0 0 6px;color:var(--ink);}
+.cc-modal-p{font-size:13.5px;line-height:1.55;color:var(--ink2);margin:0 0 18px;}
+.cc-modal-in{width:100%;border:1px solid var(--line);border-radius:11px;padding:13px 15px;font-size:15px;font-family:var(--sans);background:var(--paper);color:var(--ink);margin-bottom:13px;text-align:center;}
+.cc-modal-in:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--tealT);}
+.cc-modal-go{width:100%;}
+
+/* ===== brand polish ===== */
+.cc-brand-m{background:linear-gradient(135deg,var(--teal),var(--tealD));box-shadow:0 4px 12px rgba(14,124,107,.28);}
+
+/* ===== dark theme ===== */
+.cc.dark{--paper:#0E1416;--surf:#161E21;--surf2:#202A2E;--ink:#EAEFEE;--ink2:#AAB6B4;--mut:#71807D;--line:#2B373B;
+ --teal:#28A993;--tealD:#5BD0BB;--tealT:#123029;--amber:#D88C45;--amberT:#33260F;--green:#43B570;--greenT:#13301E;--red:#DB5F5F;--redT:#341A1A;}
+.cc.dark .cc-top{background:rgba(14,20,22,.88);}
+.cc.dark .cc-formula{background:#0A1113;color:#CFE8E2;}
+.cc.dark .cc-formula svg{color:var(--tealD);}
+.cc.dark .cc-task.hw{background:#1b211a;border-color:#3a4126;}
+.cc.dark .cc-btn.ghost:hover:not(:disabled){background:#283338;}
+.cc.dark .cc-btn.primary,.cc.dark .cc-login-btn,.cc.dark .cc-msg.u .cc-msg-b{color:#06231e;}
+.cc.dark .cc-btn.amber{color:#241606;}
+.cc.dark .cc-call.note{color:#7fd9c8;}
+.cc.dark .cc-call.warn{color:#e6b079;}
+.cc.dark .cc-card.flip .cc-card-tx{color:#8fe0d0;}
+.cc.dark .cc-ans,.cc.dark .cc-fb.good,.cc.dark .cc-btn.yes{color:#7ed59b;}
+.cc.dark .cc-fb.bad,.cc.dark .cc-hw-fix,.cc.dark .cc-btn.dno{color:#eda0a0;}
+.cc.dark .cc-fb.mid{color:#e6b079;}
+.cc.dark .cc-btn.yes{border-color:#2c5a3f;}
+.cc.dark .cc-btn.dno{border-color:#5e3030;}
+.cc.dark .cc-tcard:hover,.cc.dark .cc-acc-i.open,.cc.dark .cc-card.flip,.cc.dark .cc-act:hover{border-color:#2f6b5f;}
+.cc.dark .cc-tcard:hover{box-shadow:0 8px 22px rgba(0,0,0,.32);}
+.cc.dark .cc-sample{border-top-color:rgba(255,255,255,.12);}
+.cc.dark .cc-brand-m{box-shadow:0 4px 14px rgba(40,169,147,.3);}
+
+@media(max-width:520px){
+  .cc-auth-name{display:none;}
+  .cc-brand-s{display:none;}
 }
 `;
