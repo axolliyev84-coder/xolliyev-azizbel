@@ -446,23 +446,40 @@ export default function App(){
   const [ready,setReady]=useState(false);
   const [theme,setTheme]=useState("light");
   const [user,setUser]=useState(null);
-  const [loginOpen,setLoginOpen]=useState(false);
   const [nameDraft,setNameDraft]=useState("");
 
   useEffect(()=>{(async()=>{ const raw=await sGet(PKEY); if(raw){try{setProg(JSON.parse(raw));}catch{}} setReady(true); })();},[]);
   useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t);
     const u=localStorage.getItem(UKEY); if(u){ try{ setUser(JSON.parse(u)); }catch{} } }catch{} },[]);
+  useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
 
   const save=useCallback(async(p)=>{ setProg(p); await sSet(PKEY,JSON.stringify(p)); },[]);
   function tp(id){ return prog[id]||{cardsKnown:[],quizBest:0,hw:{}}; }
   function setTP(id,patch){ const cur=tp(id); save({...prog,[id]:{...cur,...patch}}); }
   function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
-  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setLoginOpen(false); setNameDraft(""); }
+  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
   function logout(){ setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
 
   if(!ready) return <><style>{CSS}</style><div className={rootCls}><div className="cc-boot"><Loader2 size={20} className="cc-spin"/> Загрузка…</div></div></>;
+
+  if(!user) return (<>
+    <style>{CSS}</style>
+    <div className={rootCls}>
+      <div className="cc-gate">
+        <button className="cc-icon-btn cc-gate-th" onClick={toggleTheme} title="Сменить тему" aria-label="Сменить тему">{theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}</button>
+        <div className="cc-gate-card">
+          <div className="cc-gate-logo"><Sparkles size={28}/></div>
+          <h1 className="cc-gate-t">МСФО ИИ</h1>
+          <p className="cc-gate-s">Интерактивный курс МСФО: теория, карточки, тесты и ИИ-репетитор. Войдите, чтобы начать — введите имя, и ваш прогресс сохранится.</p>
+          <input className="cc-modal-in" placeholder="Ваше имя" value={nameDraft} maxLength={24} autoFocus
+            onChange={e=>setNameDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
+          <button className="cc-btn primary cc-modal-go" disabled={!nameDraft.trim()} onClick={doLogin}><LogIn size={16}/> Войти</button>
+        </div>
+      </div>
+    </div>
+  </>);
 
   const topic = TMAP[topicId];
 
@@ -479,36 +496,18 @@ export default function App(){
           <button className="cc-icon-btn" onClick={toggleTheme} title={theme==="dark"?"Светлая тема":"Тёмная тема"} aria-label="Сменить тему">
             {theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}
           </button>
-          {user ? (
-            <div className="cc-auth">
-              <span className="cc-avatar">{user.name.charAt(0).toUpperCase()}</span>
-              <span className="cc-auth-name">{user.name}</span>
-              <button className="cc-icon-btn sm" onClick={logout} title="Выйти" aria-label="Выйти"><LogOut size={16}/></button>
-            </div>
-          ) : (
-            <button className="cc-login-btn" onClick={()=>setLoginOpen(true)}><LogIn size={16}/> Войти</button>
-          )}
+          <div className="cc-auth">
+            <span className="cc-avatar">{user.name.charAt(0).toUpperCase()}</span>
+            <span className="cc-auth-name">{user.name}</span>
+            <button className="cc-icon-btn sm" onClick={logout} title="Выйти" aria-label="Выйти"><LogOut size={16}/></button>
+          </div>
         </div>
       </header>
 
       {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
-      {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP}/>}
+      {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")}/>}
       {view==="hw" && <HomeworkHub/>}
       {view==="exam" && <ExamView prog={prog} save={save}/>}
-
-      {loginOpen && (
-        <div className="cc-modal-ov" onClick={()=>setLoginOpen(false)}>
-          <div className="cc-modal" onClick={e=>e.stopPropagation()}>
-            <button className="cc-modal-x" onClick={()=>setLoginOpen(false)} aria-label="Закрыть"><X size={18}/></button>
-            <div className="cc-modal-ic"><GraduationCap size={26}/></div>
-            <h2 className="cc-modal-t">Добро пожаловать!</h2>
-            <p className="cc-modal-p">Введите имя, чтобы заниматься под своим профилем. Прогресс сохраняется на этом устройстве.</p>
-            <input className="cc-modal-in" placeholder="Ваше имя" value={nameDraft} maxLength={24} autoFocus
-              onChange={e=>setNameDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
-            <button className="cc-btn primary cc-modal-go" disabled={!nameDraft.trim()} onClick={doLogin}><LogIn size={16}/> Войти</button>
-          </div>
-        </div>
-      )}
     </div>
   </>);
 }
@@ -561,11 +560,12 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
 }
 
 /* ---------- TOPIC ---------- */
-function TopicView({topic,tab,setTab,tp,setTP}){
+function TopicView({topic,tab,setTab,tp,setTP,goHome}){
   const p=tp(topic.id);
   const TABS=[["theory","Теория",<BookOpen size={16}/>],["cards","Карточки",<Layers size={16}/>],["tasks","Задачи",<Calculator size={16}/>],["quiz","Тест",<ClipboardList size={16}/>],["tutor","Репетитор",<Sparkles size={16}/>]];
   return(
     <main className="cc-main">
+      <button className="cc-back" onClick={goHome}><ArrowLeft size={15}/> В главное меню</button>
       <div className="cc-thead">
         <span className="cc-tcode big">{topic.code}</span>
         <h1 className="cc-h1 sm">{topic.title}</h1>
@@ -1042,6 +1042,21 @@ const CSS=`
 
 /* ===== brand polish ===== */
 .cc-brand-m{background:linear-gradient(135deg,var(--teal),var(--tealD));box-shadow:0 4px 12px rgba(14,124,107,.28);}
+
+/* buttons are form controls -> they don't inherit text color; force theme color */
+.cc-brand,.cc-tcard,.cc-act,.cc-card,.cc-acc-h{color:var(--ink);}
+
+/* ===== login gate (required login on entry) ===== */
+.cc-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;}
+.cc-gate-th{position:absolute;top:18px;right:18px;}
+.cc-gate-card{width:100%;max-width:390px;background:var(--surf);border:1px solid var(--line);border-radius:20px;padding:38px 28px 30px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.18);animation:ccpop .3s cubic-bezier(.2,.8,.2,1);}
+.cc-gate-logo{width:62px;height:62px;border-radius:17px;margin:0 auto 16px;background:linear-gradient(135deg,var(--teal),var(--tealD));color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(14,124,107,.3);}
+.cc-gate-t{font-family:var(--serif);font-size:28px;font-weight:700;margin:0 0 8px;color:var(--ink);}
+.cc-gate-s{font-size:14px;line-height:1.6;color:var(--ink2);margin:0 0 20px;}
+
+/* ===== back-to-menu button (topic view) ===== */
+.cc-back{display:inline-flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--line);border-radius:9px;padding:8px 13px;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer;font-family:var(--sans);margin-bottom:16px;transition:background .15s,color .15s,border-color .15s;}
+.cc-back:hover{background:var(--surf2);color:var(--ink);border-color:var(--teal);}
 
 /* ===== dark theme ===== */
 .cc.dark{--paper:#0E1416;--surf:#161E21;--surf2:#202A2E;--ink:#EAEFEE;--ink2:#AAB6B4;--mut:#71807D;--line:#2B373B;
