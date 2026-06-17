@@ -1,6 +1,6 @@
 // Records a user activity event into Redis (newest first, capped at 2000).
 // No-op if the DB isn't connected yet, so the site keeps working regardless.
-import { redis, hasDb } from "../lib/kv.js";
+import { pushEvent, hasDb } from "../lib/kv.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -21,8 +21,7 @@ export default async function handler(req, res) {
       avg: Number(b.avg) || 0,
       ts: Date.now(),
     });
-    await redis(["LPUSH", "mcfo_events", ev]);
-    await redis(["LTRIM", "mcfo_events", "0", "1999"]);
+    await pushEvent(ev);
     res.status(200).json({ ok: true });
   } catch (e) {
     res.status(200).json({ ok: false });

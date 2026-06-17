@@ -1,6 +1,6 @@
 // Returns recent activity events for the admin panel. Password-protected via
 // the ADMIN_PASSWORD env var (compared against the x-admin-key header).
-import { redis, hasDb, sanitize } from "../lib/kv.js";
+import { listEvents, hasDb, sanitize } from "../lib/kv.js";
 
 export default async function handler(req, res) {
   const pass = sanitize(process.env.ADMIN_PASSWORD || "");
@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     return;
   }
   try {
-    const r = await redis(["LRANGE", "mcfo_events", "0", "1999"]);
-    const events = (r.result || [])
+    const raw = await listEvents(2000);
+    const events = raw
       .map((s) => { try { return JSON.parse(s); } catch { return null; } })
       .filter(Boolean);
     res.status(200).json({ events, db: true });
