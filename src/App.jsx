@@ -35,6 +35,14 @@ function parseArr(t){
 }
 function fmt(n){ return typeof n==="number"? n.toLocaleString("ru-RU"): n; }
 
+/* ===================== ANALYTICS (admin tracking) ===================== */
+function sendEvent(payload){ try{ fetch("/api/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true}); }catch{} }
+function progStats(prog){ let cards=0,sum=0,n=0; for(const t of TOPICS){ const p=prog&&prog[t.id]; if(p&&p.cardsKnown) cards+=p.cardsKnown.length; sum+=(p&&p.quizBest)||0; n++; } return {cards, avg: n?Math.round(sum/n):0}; }
+function fmtTime(ts){ if(!ts) return "—"; const d=new Date(ts), now=new Date(); const hm=d.toTimeString().slice(0,5);
+  if(d.toDateString()===now.toDateString()) return "сегодня, "+hm;
+  const y=new Date(now); y.setDate(now.getDate()-1); if(d.toDateString()===y.toDateString()) return "вчера, "+hm;
+  return d.getDate().toString().padStart(2,"0")+"."+(d.getMonth()+1).toString().padStart(2,"0")+", "+hm; }
+
 /* ===================== CONTENT (из материалов студента) ===================== */
 const SRC = "Курс «Сертифицированный главный бухгалтер» (АВСО) — ваши конспекты, тесты, Excel и решения";
 
@@ -457,10 +465,14 @@ export default function App(){
   function tp(id){ return prog[id]||{cardsKnown:[],quizBest:0,hw:{}}; }
   function setTP(id,patch){ const cur=tp(id); save({...prog,[id]:{...cur,...patch}}); }
   function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
-  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
+  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); const s=progStats(prog); sendEvent({u:u.name,t:"login",d:"",cards:s.cards,avg:s.avg}); }
   function logout(){ setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
+  function track(type,detail){ if(!user) return; const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
+  const adminRoute = typeof window!=="undefined" && (/\/admin\/?$/.test(window.location.pathname) || window.location.hash==="#admin");
+
+  if(adminRoute) return <><style>{CSS}</style><div className={rootCls}><AdminView theme={theme} toggleTheme={toggleTheme}/></div></>;
 
   if(!ready) return <><style>{CSS}</style><div className={rootCls}><div className="cc-boot"><Loader2 size={20} className="cc-spin"/> Загрузка…</div></div></>;
 
@@ -504,10 +516,10 @@ export default function App(){
         </div>
       </header>
 
-      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
-      {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")}/>}
+      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
+      {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")} track={track}/>}
       {view==="hw" && <HomeworkHub/>}
-      {view==="exam" && <ExamView prog={prog} save={save}/>}
+      {view==="exam" && <ExamView prog={prog} save={save} track={track}/>}
     </div>
   </>);
 }
@@ -560,7 +572,7 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
 }
 
 /* ---------- TOPIC ---------- */
-function TopicView({topic,tab,setTab,tp,setTP,goHome}){
+function TopicView({topic,tab,setTab,tp,setTP,goHome,track}){
   const p=tp(topic.id);
   const TABS=[["theory","Теория",<BookOpen size={16}/>],["cards","Карточки",<Layers size={16}/>],["tasks","Задачи",<Calculator size={16}/>],["quiz","Тест",<ClipboardList size={16}/>],["tutor","Репетитор",<Sparkles size={16}/>]];
   return(
@@ -576,7 +588,7 @@ function TopicView({topic,tab,setTab,tp,setTP,goHome}){
       {tab==="theory" && <Theory topic={topic}/>}
       {tab==="cards" && <Cards topic={topic} p={p} setTP={setTP}/>}
       {tab==="tasks" && <Tasks topic={topic}/>}
-      {tab==="quiz" && <Quiz topic={topic} p={p} setTP={setTP}/>}
+      {tab==="quiz" && <Quiz topic={topic} p={p} setTP={setTP} track={track}/>}
       {tab==="tutor" && <Tutor topic={topic}/>}
     </main>
   );
@@ -661,7 +673,7 @@ function ExampleCard({ex}){
   );
 }
 
-function Quiz({topic,p,setTP}){
+function Quiz({topic,p,setTP,track}){
   const QUIZ=topic.quiz;
   const [stage,setStage]=useState("intro"); const [idx,setIdx]=useState(0);
   const [res,setRes]=useState(QUIZ.map(()=>null)); const [draft,setDraft]=useState(""); const [ev,setEv]=useState(false);
@@ -675,7 +687,7 @@ function Quiz({topic,p,setTP}){
     }catch{ setRes(a=>a.map((x,i)=>i===idx?{open:true,given:draft.trim(),score:0,correct:false,fb:"Не удалось оценить."}:x)); }
     finally{setEv(false);}
   }
-  function next(){ setDraft(""); if(idx+1>=QUIZ.length){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/QUIZ.length*100); if(pct>p.quizBest) setTP(topic.id,{quizBest:pct}); setStage("done"); } else setIdx(idx+1); }
+  function next(){ setDraft(""); if(idx+1>=QUIZ.length){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/QUIZ.length*100); if(pct>p.quizBest) setTP(topic.id,{quizBest:pct}); if(track) track("quiz",topic.code+": "+pct+"%"); setStage("done"); } else setIdx(idx+1); }
 
   if(stage==="intro") return <div className="cc-view"><div className="cc-quiz-i"><ClipboardList size={28}/><h2>Тест: {topic.title}</h2><p>{QUIZ.length} вопросов из вашего курса. Лучший результат: <b>{p.quizBest}%</b>.</p><button className="cc-btn primary" onClick={start}><ArrowRight size={16}/> Начать</button></div></div>;
   if(stage==="done"){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/QUIZ.length*100);
@@ -785,7 +797,7 @@ function ClassifyHW({hw}){
 }
 
 /* ---------- EXAM (mixed) ---------- */
-function ExamView({prog,save}){
+function ExamView({prog,save,track}){
   const pool=useMemo(()=>{ const all=[]; TOPICS.forEach(t=>t.quiz.forEach(q=>{ if(!q.open && q.options) all.push({...q,code:t.code}); })); return all; },[]);
   const [stage,setStage]=useState("intro"); const [qs,setQs]=useState([]); const [idx,setIdx]=useState(0); const [res,setRes]=useState([]);
   function start(){ const sh=[...pool].sort(()=>Math.random()-0.5).slice(0,10); setQs(sh); setRes(sh.map(()=>null)); setIdx(0); setStage("run"); }
@@ -793,7 +805,7 @@ function ExamView({prog,save}){
   if(stage==="intro") return <main className="cc-main"><div className="cc-thead"><Award size={22} className="cc-thead-ic amber"/><h1 className="cc-h1 sm">Экзамен</h1></div><div className="cc-quiz-i"><Award size={28}/><h2>Смешанный тест</h2><p>10 случайных вопросов из всех тем (Основы, IAS 1, IAS 2, IAS 16). Лучший результат: <b>{examBest}%</b>.</p><button className="cc-btn amber" onClick={start}><ArrowRight size={16}/> Начать экзамен</button></div></main>;
   const q=qs[idx], r=res[idx];
   function mcq(c){ setRes(a=>a.map((x,i)=>i===idx?{correct:c===q.correct,choice:c}:x)); }
-  function next(){ if(idx+1>=qs.length){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/qs.length*100); if(pct>examBest) save({...prog,examBest:pct}); setStage("done"); } else setIdx(idx+1); }
+  function next(){ if(idx+1>=qs.length){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/qs.length*100); if(pct>examBest) save({...prog,examBest:pct}); if(track) track("exam",pct+"%"); setStage("done"); } else setIdx(idx+1); }
   if(stage==="done"){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/qs.length*100);
     return <main className="cc-main"><div className="cc-done"><div className="cc-done-p">{pct}%</div><h2>{pct>=80?"Отличный результат!":pct>=60?"Неплохо":"Нужно повторить"}</h2><p>{c} из {qs.length} верно</p><div className="cc-done-a"><button className="cc-btn amber" onClick={start}><RefreshCw size={16}/> Ещё раз</button></div></div></main>;
   }
@@ -808,6 +820,93 @@ function ExamView({prog,save}){
       {r && <div className="cc-qnav"><button className="cc-btn amber" onClick={next}>{idx+1>=qs.length?<>Завершить <Trophy size={15}/></>:<>Далее <ArrowRight size={15}/></>}</button></div>}
     </main>
   );
+}
+
+/* ===================== ADMIN PANEL ===================== */
+function AdminView({theme,toggleTheme}){
+  const [pass,setPass]=useState(""); const [authed,setAuthed]=useState(false);
+  const [data,setData]=useState({events:[],db:true}); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
+  async function load(k){ if(!k.trim()) return; setBusy(true); setErr("");
+    try{ const r=await fetch("/api/admin",{headers:{"x-admin-key":k}});
+      if(r.status===401){ setErr("Неверный пароль"); setBusy(false); return; }
+      if(!r.ok){ setErr("Ошибка сервера ("+r.status+")"); setBusy(false); return; }
+      const d=await r.json(); setData(d); setAuthed(true);
+    }catch{ setErr("Нет соединения"); } finally{ setBusy(false); }
+  }
+  if(!authed) return (
+    <div className="cc-gate">
+      <button className="cc-icon-btn cc-gate-th" onClick={toggleTheme} aria-label="Сменить тему">{theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}</button>
+      <div className="cc-gate-card">
+        <div className="cc-gate-logo"><Sparkles size={28}/></div>
+        <h1 className="cc-gate-t">Админ-панель</h1>
+        <p className="cc-gate-s">Введите пароль преподавателя, чтобы посмотреть активность учеников.</p>
+        <input className="cc-modal-in" type="password" placeholder="Пароль" value={pass} autoFocus
+          onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&load(pass)}/>
+        {err && <div className="cc-fb bad" style={{marginBottom:12,textAlign:"center"}}>{err}</div>}
+        <button className="cc-btn primary cc-modal-go" disabled={busy||!pass.trim()} onClick={()=>load(pass)}>{busy?<span className="cc-sp"><Loader2 size={15} className="cc-spin"/> Вход…</span>:<><LogIn size={16}/> Войти</>}</button>
+      </div>
+    </div>
+  );
+  const events=data.events||[];
+  const byUser={};
+  for(const e of events){ const u=e.u||"—"; if(!byUser[u]) byUser[u]={u,last:0,logins:0,tests:0,best:0,cards:0,avg:0,seen:false};
+    const a=byUser[u]; a.last=Math.max(a.last,e.ts||0);
+    if(e.t==="login") a.logins++;
+    if(e.t==="quiz"||e.t==="exam"){ a.tests++; const m=/(\d+)%/.exec(e.d||""); if(m) a.best=Math.max(a.best,+m[1]); }
+    if(!a.seen){ a.cards=e.cards||0; a.avg=e.avg||0; a.seen=true; }
+  }
+  const users=Object.values(byUser).sort((x,y)=>y.last-x.last);
+  const startToday=new Date(); startToday.setHours(0,0,0,0);
+  const todayActive=users.filter(u=>u.last>=startToday.getTime()).length;
+  const totalLogins=users.reduce((s,u)=>s+u.logins,0);
+  const withTests=users.filter(u=>u.tests>0);
+  const avgScore=withTests.length?Math.round(withTests.reduce((s,u)=>s+u.best,0)/withTests.length):0;
+  const TICON={login:<LogIn size={15}/>,topic:<BookOpen size={15}/>,quiz:<ClipboardList size={15}/>,exam:<Award size={15}/>};
+  const TTXT={login:"вошёл(ла) в систему",topic:"открыл(а) тему",quiz:"тест",exam:"экзамен"};
+  return(<>
+    <header className="cc-top">
+      <div className="cc-brand" style={{cursor:"default"}}>
+        <span className="cc-brand-m"><Sparkles size={19}/></span>
+        <span><span className="cc-brand-n">МСФО ИИ · админ</span><span className="cc-brand-s">панель преподавателя</span></span>
+      </div>
+      <div className="cc-top-r">
+        <button className="cc-icon-btn" onClick={()=>load(pass)} title="Обновить" aria-label="Обновить"><RefreshCw size={16}/></button>
+        <button className="cc-icon-btn" onClick={toggleTheme} aria-label="Сменить тему">{theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}</button>
+      </div>
+    </header>
+    <main className="cc-main">
+      {!data.db && <div className="cc-call warn" style={{marginBottom:16}}><AlertTriangle size={15}/><div><b>База ещё не подключена.</b> Данные не сохраняются. Подключите хранилище в Vercel (Storage).</div></div>}
+      <div className="cc-stats">
+        <div className="cc-stat"><Target size={16}/><b>{users.length}</b><small>учеников</small></div>
+        <div className="cc-stat"><CheckCircle2 size={16}/><b>{todayActive}</b><small>сегодня</small></div>
+        <div className="cc-stat"><LogIn size={16}/><b>{totalLogins}</b><small>всего входов</small></div>
+        <div className="cc-stat"><Trophy size={16}/><b>{avgScore}%</b><small>ср. балл</small></div>
+      </div>
+      <div className="cc-note-lead" style={{marginBottom:8}}>Ученики</div>
+      {users.length===0 ? <div className="cc-empty"><Brain size={26}/><p>Пока нет данных. Как только ученики начнут заходить, здесь появится их активность.</p></div> :
+      <div className="cc-adm-tbl">
+        <div className="cc-adm-r head"><span>Ученик</span><span>Посл. вход</span><span className="n">Входов</span><span className="n">Тестов</span><span className="n">Балл</span><span className="n">Карточки</span></div>
+        {users.map(u=>(
+          <div className="cc-adm-r" key={u.u}>
+            <span className="cc-adm-u"><span className="cc-avatar sm">{(u.u[0]||"?").toUpperCase()}</span>{u.u}</span>
+            <span className="cc-adm-d">{fmtTime(u.last)}</span>
+            <span className="n">{u.logins}</span><span className="n">{u.tests}</span><span className="n">{u.best}%</span><span className="n">{u.cards}/41</span>
+          </div>
+        ))}
+      </div>}
+      <div className="cc-note-lead" style={{margin:"22px 0 8px"}}>Последние действия</div>
+      <div className="cc-adm-feed">
+        {events.length===0 && <div className="cc-adm-fi" style={{color:"var(--mut)"}}>Событий пока нет.</div>}
+        {events.slice(0,25).map((e,i)=>(
+          <div className="cc-adm-fi" key={i}>
+            <span className="cc-adm-ic">{TICON[e.t]||<BookOpen size={15}/>}</span>
+            <span className="cc-adm-ft"><b>{e.u}</b> — {TTXT[e.t]||e.t}{e.d?(" "+e.d):""}</span>
+            <span className="cc-adm-fts">{fmtTime(e.ts)}</span>
+          </div>
+        ))}
+      </div>
+    </main>
+  </>);
 }
 
 /* ===================== CSS ===================== */
@@ -1057,6 +1156,24 @@ const CSS=`
 /* ===== back-to-menu button (topic view) ===== */
 .cc-back{display:inline-flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--line);border-radius:9px;padding:8px 13px;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer;font-family:var(--sans);margin-bottom:16px;transition:background .15s,color .15s,border-color .15s;}
 .cc-back:hover{background:var(--surf2);color:var(--ink);border-color:var(--teal);}
+
+/* ===== admin panel ===== */
+.cc-avatar.sm{width:24px;height:24px;font-size:11px;margin-right:9px;}
+.cc-adm-tbl{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.cc-adm-r{display:grid;grid-template-columns:1.7fr 1.3fr .8fr .8fr .7fr .9fr;gap:8px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px;}
+.cc-adm-r:last-child{border-bottom:0;}
+.cc-adm-r.head{background:var(--surf2);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);font-weight:600;}
+.cc-adm-r .n{text-align:center;font-variant-numeric:tabular-nums;}
+.cc-adm-u{display:flex;align-items:center;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cc-adm-d{color:var(--ink2);font-size:12.5px;}
+.cc-adm-feed{display:flex;flex-direction:column;}
+.cc-adm-fi{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid var(--line);font-size:13.5px;}
+.cc-adm-fi:last-child{border-bottom:0;}
+.cc-adm-ic{width:30px;height:30px;border-radius:8px;background:var(--tealT);color:var(--tealD);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.cc-adm-ft{flex:1;color:var(--ink2);}
+.cc-adm-ft b{color:var(--ink);font-weight:600;}
+.cc-adm-fts{color:var(--mut);font-size:12px;flex:0 0 auto;}
+@media(max-width:560px){ .cc-adm-tbl{overflow-x:auto;} .cc-adm-r{grid-template-columns:1.6fr 1.2fr .7fr .7fr .7fr .9fr;min-width:520px;} }
 
 /* ===== dark theme ===== */
 .cc.dark{--paper:#0E1416;--surf:#161E21;--surf2:#202A2E;--ink:#EAEFEE;--ink2:#AAB6B4;--mut:#71807D;--line:#2B373B;
