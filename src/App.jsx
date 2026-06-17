@@ -504,7 +504,7 @@ export default function App(){
           <span><span className="cc-brand-n">МСФО ИИ</span><span className="cc-brand-s">репетитор · курс</span></span>
         </button>
         <div className="cc-top-r">
-          {view!=="home" && <button className="cc-home-btn" onClick={()=>setView("home")}><Home size={16}/> Темы</button>}
+          {view!=="home" && <button className="cc-home-btn" onClick={()=>setView("home")}><Home size={16}/><span className="cc-htxt">Темы</span></button>}
           <button className="cc-icon-btn" onClick={toggleTheme} title={theme==="dark"?"Светлая тема":"Тёмная тема"} aria-label="Сменить тему">
             {theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}
           </button>
@@ -825,12 +825,13 @@ function ExamView({prog,save,track}){
 /* ===================== ADMIN PANEL ===================== */
 function AdminView({theme,toggleTheme}){
   const [pass,setPass]=useState(""); const [authed,setAuthed]=useState(false);
-  const [data,setData]=useState({events:[],db:true}); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
+  const [data,setData]=useState({events:[],db:true});
+  const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [loaded,setLoaded]=useState(null);
   async function load(k){ if(!k.trim()) return; setBusy(true); setErr("");
     try{ const r=await fetch("/api/admin",{headers:{"x-admin-key":k}});
       if(r.status===401){ setErr("Неверный пароль"); setBusy(false); return; }
       if(!r.ok){ setErr("Ошибка сервера ("+r.status+")"); setBusy(false); return; }
-      const d=await r.json(); setData(d); setAuthed(true);
+      const d=await r.json(); setData(d); setAuthed(true); setLoaded(new Date());
     }catch{ setErr("Нет соединения"); } finally{ setBusy(false); }
   }
   if(!authed) return (
@@ -849,18 +850,29 @@ function AdminView({theme,toggleTheme}){
   );
   const events=data.events||[];
   const byUser={};
-  for(const e of events){ const u=e.u||"—"; if(!byUser[u]) byUser[u]={u,last:0,logins:0,tests:0,best:0,cards:0,avg:0,seen:false};
-    const a=byUser[u]; a.last=Math.max(a.last,e.ts||0);
+  for(const e of events){ const u=e.u||"—"; if(!byUser[u]) byUser[u]={u,first:e.ts||Date.now(),last:0,logins:0,topics:0,tests:0,best:0,cards:0,seen:false};
+    const a=byUser[u]; a.last=Math.max(a.last,e.ts||0); if(e.ts) a.first=Math.min(a.first,e.ts);
     if(e.t==="login") a.logins++;
+    if(e.t==="topic") a.topics++;
     if(e.t==="quiz"||e.t==="exam"){ a.tests++; const m=/(\d+)%/.exec(e.d||""); if(m) a.best=Math.max(a.best,+m[1]); }
-    if(!a.seen){ a.cards=e.cards||0; a.avg=e.avg||0; a.seen=true; }
+    if(!a.seen){ a.cards=e.cards||0; a.seen=true; }
   }
   const users=Object.values(byUser).sort((x,y)=>y.last-x.last);
-  const startToday=new Date(); startToday.setHours(0,0,0,0);
+  const now=Date.now(); const startToday=new Date(); startToday.setHours(0,0,0,0);
   const todayActive=users.filter(u=>u.last>=startToday.getTime()).length;
+  const weekActive=users.filter(u=>u.last>=now-7*864e5).length;
   const totalLogins=users.reduce((s,u)=>s+u.logins,0);
+  const testsDone=events.filter(e=>e.t==="quiz"||e.t==="exam").length;
   const withTests=users.filter(u=>u.tests>0);
   const avgScore=withTests.length?Math.round(withTests.reduce((s,u)=>s+u.best,0)/withTests.length):0;
+  const dow=["вс","пн","вт","ср","чт","пт","сб"];
+  const t0=new Date(); t0.setHours(0,0,0,0); const days=[];
+  for(let i=6;i>=0;i--){ const d=new Date(t0); d.setDate(t0.getDate()-i); days.push({ts:d.getTime(),label:dow[d.getDay()],count:0}); }
+  for(const e of events){ const t=e.ts||0; for(const day of days){ if(t>=day.ts&&t<day.ts+864e5){ day.count++; break; } } }
+  const maxDay=Math.max(1,...days.map(d=>d.count));
+  const tc={}; for(const e of events){ if(e.t==="topic"){ const k=e.d||"—"; tc[k]=(tc[k]||0)+1; } }
+  const topTopics=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxTopic=Math.max(1,...topTopics.map(x=>x[1]));
   const TICON={login:<LogIn size={15}/>,topic:<BookOpen size={15}/>,quiz:<ClipboardList size={15}/>,exam:<Award size={15}/>};
   const TTXT={login:"вошёл(ла) в систему",topic:"открыл(а) тему",quiz:"тест",exam:"экзамен"};
   return(<>
@@ -870,41 +882,62 @@ function AdminView({theme,toggleTheme}){
         <span><span className="cc-brand-n">МСФО ИИ · админ</span><span className="cc-brand-s">панель преподавателя</span></span>
       </div>
       <div className="cc-top-r">
-        <button className="cc-icon-btn" onClick={()=>load(pass)} title="Обновить" aria-label="Обновить"><RefreshCw size={16}/></button>
+        {loaded && <span className="cc-adm-upd">обновлено {loaded.toTimeString().slice(0,5)}</span>}
+        <button className="cc-icon-btn" onClick={()=>load(pass)} disabled={busy} title="Обновить" aria-label="Обновить"><RefreshCw size={16} className={busy?"cc-spin":""}/></button>
         <button className="cc-icon-btn" onClick={toggleTheme} aria-label="Сменить тему">{theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}</button>
       </div>
     </header>
     <main className="cc-main">
-      {!data.db && <div className="cc-call warn" style={{marginBottom:16}}><AlertTriangle size={15}/><div><b>База ещё не подключена.</b> Данные не сохраняются. Подключите хранилище в Vercel (Storage).</div></div>}
-      <div className="cc-stats">
+      {!data.db && <div className="cc-call warn" style={{marginBottom:16}}><AlertTriangle size={15}/><div><b>База ещё не подключена.</b> Данные не сохраняются. Подключите хранилище в Vercel → Storage.</div></div>}
+      <div className="cc-astats">
         <div className="cc-stat"><Target size={16}/><b>{users.length}</b><small>учеников</small></div>
         <div className="cc-stat"><CheckCircle2 size={16}/><b>{todayActive}</b><small>сегодня</small></div>
+        <div className="cc-stat"><RefreshCw size={16}/><b>{weekActive}</b><small>за неделю</small></div>
         <div className="cc-stat"><LogIn size={16}/><b>{totalLogins}</b><small>всего входов</small></div>
+        <div className="cc-stat"><ClipboardList size={16}/><b>{testsDone}</b><small>тестов сдано</small></div>
         <div className="cc-stat"><Trophy size={16}/><b>{avgScore}%</b><small>ср. балл</small></div>
       </div>
-      <div className="cc-note-lead" style={{marginBottom:8}}>Ученики</div>
-      {users.length===0 ? <div className="cc-empty"><Brain size={26}/><p>Пока нет данных. Как только ученики начнут заходить, здесь появится их активность.</p></div> :
-      <div className="cc-adm-tbl">
-        <div className="cc-adm-r head"><span>Ученик</span><span>Посл. вход</span><span className="n">Входов</span><span className="n">Тестов</span><span className="n">Балл</span><span className="n">Карточки</span></div>
-        {users.map(u=>(
-          <div className="cc-adm-r" key={u.u}>
-            <span className="cc-adm-u"><span className="cc-avatar sm">{(u.u[0]||"?").toUpperCase()}</span>{u.u}</span>
-            <span className="cc-adm-d">{fmtTime(u.last)}</span>
-            <span className="n">{u.logins}</span><span className="n">{u.tests}</span><span className="n">{u.best}%</span><span className="n">{u.cards}/41</span>
+      {events.length===0 ? <div className="cc-empty"><Brain size={26}/><p>Пока нет данных. Как только ученики начнут заходить, здесь появится их активность — входы, открытые темы и результаты тестов.</p></div> :
+      <>
+        <div className="cc-adm-two">
+          <div className="cc-apanel">
+            <div className="cc-apanel-t"><Target size={15}/> Активность за 7 дней</div>
+            <div className="cc-bars">{days.map((d,i)=>(
+              <div className="cc-bar" key={i}><span className="cc-bar-n">{d.count||""}</span><span className="cc-bar-v" style={{height:Math.round(d.count/maxDay*70)+"%"}}/><span className="cc-bar-l">{d.label}</span></div>
+            ))}</div>
           </div>
-        ))}
-      </div>}
-      <div className="cc-note-lead" style={{margin:"22px 0 8px"}}>Последние действия</div>
-      <div className="cc-adm-feed">
-        {events.length===0 && <div className="cc-adm-fi" style={{color:"var(--mut)"}}>Событий пока нет.</div>}
-        {events.slice(0,25).map((e,i)=>(
-          <div className="cc-adm-fi" key={i}>
-            <span className="cc-adm-ic">{TICON[e.t]||<BookOpen size={15}/>}</span>
-            <span className="cc-adm-ft"><b>{e.u}</b> — {TTXT[e.t]||e.t}{e.d?(" "+e.d):""}</span>
-            <span className="cc-adm-fts">{fmtTime(e.ts)}</span>
+          <div className="cc-apanel">
+            <div className="cc-apanel-t"><BookOpen size={15}/> Популярные темы</div>
+            {topTopics.length===0 ? <div style={{fontSize:13,color:"var(--mut)"}}>Темы ещё не открывали.</div> :
+             topTopics.map(([k,v])=>(
+              <div className="cc-trow" key={k}><span className="cc-trow-l">{k}</span><span className="cc-trow-bar"><span className="cc-trow-fill" style={{width:Math.round(v/maxTopic*100)+"%"}}/></span><span className="cc-trow-n">{v}</span></div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+        <div className="cc-note-lead" style={{margin:"4px 0 8px"}}>Ученики · {users.length}</div>
+        <div className="cc-adm-tbl">
+          <div className="cc-adm-r head"><span>Ученик</span><span>Посл. вход</span><span className="n">Входов</span><span className="n">Тем</span><span className="n">Тестов</span><span className="n">Балл</span><span className="n">Карточки</span></div>
+          {users.map(u=>(
+            <div className="cc-adm-r" key={u.u}>
+              <span className="cc-adm-u"><span className="cc-avatar sm">{(u.u[0]||"?").toUpperCase()}</span>{u.u}</span>
+              <span className="cc-adm-d">{fmtTime(u.last)}</span>
+              <span className="n">{u.logins}</span><span className="n">{u.topics}</span><span className="n">{u.tests}</span>
+              <span className="n"><b style={{color:u.best>=80?"var(--green)":u.best>=60?"var(--amber)":"var(--ink2)"}}>{u.tests?u.best+"%":"—"}</b></span>
+              <span className="n">{u.cards}/41</span>
+            </div>
+          ))}
+        </div>
+        <div className="cc-note-lead" style={{margin:"22px 0 8px"}}>Последние действия</div>
+        <div className="cc-adm-feed">
+          {events.slice(0,30).map((e,i)=>(
+            <div className="cc-adm-fi" key={i}>
+              <span className="cc-adm-ic">{TICON[e.t]||<BookOpen size={15}/>}</span>
+              <span className="cc-adm-ft"><b>{e.u}</b> — {TTXT[e.t]||e.t}{e.d?(" "+e.d):""}</span>
+              <span className="cc-adm-fts">{fmtTime(e.ts)}</span>
+            </div>
+          ))}
+        </div>
+      </>}
     </main>
   </>);
 }
@@ -1159,8 +1192,25 @@ const CSS=`
 
 /* ===== admin panel ===== */
 .cc-avatar.sm{width:24px;height:24px;font-size:11px;margin-right:9px;}
+.cc-adm-upd{font-size:11.5px;color:var(--mut);white-space:nowrap;}
+.cc-astats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.cc-adm-two{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:20px;}
+.cc-apanel{background:var(--surf);border:1px solid var(--line);border-radius:13px;padding:15px 17px;}
+.cc-apanel-t{font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+.cc-apanel-t svg{color:var(--teal);}
+.cc-bars{display:flex;align-items:flex-end;gap:7px;height:104px;}
+.cc-bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;}
+.cc-bar-v{width:100%;max-width:30px;min-height:3px;background:var(--teal);border-radius:5px 5px 0 0;transition:height .4s ease;}
+.cc-bar-l{font-size:11px;color:var(--mut);}
+.cc-bar-n{font-size:11px;color:var(--ink2);font-weight:600;min-height:14px;}
+.cc-trow{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:13px;}
+.cc-trow:last-child{margin-bottom:0;}
+.cc-trow-l{min-width:62px;font-weight:600;color:var(--ink);}
+.cc-trow-bar{flex:1;height:8px;background:var(--surf2);border-radius:6px;overflow:hidden;}
+.cc-trow-fill{height:100%;background:var(--teal);border-radius:6px;transition:width .4s ease;}
+.cc-trow-n{color:var(--ink2);font-variant-numeric:tabular-nums;min-width:22px;text-align:right;}
 .cc-adm-tbl{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
-.cc-adm-r{display:grid;grid-template-columns:1.7fr 1.3fr .8fr .8fr .7fr .9fr;gap:8px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px;}
+.cc-adm-r{display:grid;grid-template-columns:1.6fr 1.2fr .62fr .55fr .62fr .7fr .9fr;gap:8px;align-items:center;padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px;}
 .cc-adm-r:last-child{border-bottom:0;}
 .cc-adm-r.head{background:var(--surf2);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);font-weight:600;}
 .cc-adm-r .n{text-align:center;font-variant-numeric:tabular-nums;}
@@ -1173,12 +1223,16 @@ const CSS=`
 .cc-adm-ft{flex:1;color:var(--ink2);}
 .cc-adm-ft b{color:var(--ink);font-weight:600;}
 .cc-adm-fts{color:var(--mut);font-size:12px;flex:0 0 auto;}
-@media(max-width:560px){ .cc-adm-tbl{overflow-x:auto;} .cc-adm-r{grid-template-columns:1.6fr 1.2fr .7fr .7fr .7fr .9fr;min-width:520px;} }
+@media(max-width:640px){ .cc-adm-two{grid-template-columns:1fr;} }
+@media(max-width:560px){ .cc-adm-tbl{overflow-x:auto;} .cc-adm-r{grid-template-columns:1.5fr 1.1fr .6fr .5fr .6fr .65fr .85fr;min-width:580px;} }
 
 /* ===== dark theme ===== */
-.cc.dark{--paper:#0E1416;--surf:#161E21;--surf2:#202A2E;--ink:#EAEFEE;--ink2:#AAB6B4;--mut:#71807D;--line:#2B373B;
+.cc.dark{--paper:#0D1217;--surf:#1A222A;--surf2:#242E36;--ink:#ECF1F0;--ink2:#A7B3B1;--mut:#73817E;--line:#28333A;
  --teal:#28A993;--tealD:#5BD0BB;--tealT:#123029;--amber:#D88C45;--amberT:#33260F;--green:#43B570;--greenT:#13301E;--red:#DB5F5F;--redT:#341A1A;}
-.cc.dark .cc-top{background:rgba(14,20,22,.88);}
+.cc.dark .cc-top{background:rgba(13,18,23,.9);}
+/* kill the "white line" look: cards defined by surface fill, not borders */
+.cc.dark .cc-stat,.cc.dark .cc-tcard,.cc.dark .cc-act,.cc.dark .cc-acc-i,.cc.dark .cc-task,.cc.dark .cc-card,.cc.dark .cc-quiz-i,.cc.dark .cc-done,.cc.dark .cc-empty,.cc.dark .cc-gate-card,.cc.dark .cc-adm-tbl,.cc.dark .cc-apanel{border-color:transparent;}
+.cc.dark .cc-acc-i.open{border-color:#2f6b5f;}
 .cc.dark .cc-formula{background:#0A1113;color:#CFE8E2;}
 .cc.dark .cc-formula svg{color:var(--tealD);}
 .cc.dark .cc-task.hw{background:#1b211a;border-color:#3a4126;}
@@ -1198,8 +1252,24 @@ const CSS=`
 .cc.dark .cc-sample{border-top-color:rgba(255,255,255,.12);}
 .cc.dark .cc-brand-m{box-shadow:0 4px 14px rgba(40,169,147,.3);}
 
-@media(max-width:520px){
-  .cc-auth-name{display:none;}
+.cc-brand-n{white-space:nowrap;}
+.cc-tabs{scrollbar-width:none;-ms-overflow-style:none;}
+.cc-tabs::-webkit-scrollbar{display:none;}
+@media(max-width:560px){
+  .cc-top{padding:10px 12px;gap:8px;}
+  .cc-brand{min-width:0;flex:0 1 auto;overflow:hidden;}
+  .cc-brand-n{font-size:17px;}
   .cc-brand-s{display:none;}
+  .cc-brand-m{width:34px;height:34px;flex:0 0 auto;}
+  .cc-top-r{flex:0 0 auto;gap:6px;}
+  .cc-htxt{display:none;}
+  .cc-home-btn{padding:9px;}
+  .cc-icon-btn{width:36px;height:36px;}
+  .cc-icon-btn.sm{width:30px;height:30px;}
+  .cc-auth{padding:3px;gap:0;}
+  .cc-auth-name{display:none;}
+  .cc-tab{padding:11px 10px;font-size:13px;}
+  .cc-main{padding:20px 14px 60px;}
+  .cc-astats{grid-template-columns:repeat(2,1fr);}
 }
 `;
