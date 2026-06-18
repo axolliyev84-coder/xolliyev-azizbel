@@ -1,6 +1,6 @@
 // Returns recent activity events for the admin panel. Password-protected via
 // the ADMIN_PASSWORD env var (compared against the x-admin-key header).
-import { listEvents, hasDb, sanitize } from "../lib/kv.js";
+import { listEvents, clearEvents, hasDb, sanitize } from "../lib/kv.js";
 
 export default async function handler(req, res) {
   const pass = sanitize(process.env.ADMIN_PASSWORD || "");
@@ -12,6 +12,13 @@ export default async function handler(req, res) {
   }
   if (given !== pass) {
     res.status(401).json({ error: "Неверный пароль" });
+    return;
+  }
+  // Clear all activity history (admin only).
+  if (req.method === "DELETE") {
+    if (!hasDb()) { res.status(200).json({ ok: true, db: false }); return; }
+    try { await clearEvents(); res.status(200).json({ ok: true, cleared: true }); }
+    catch (e) { res.status(500).json({ error: "Ошибка очистки" }); }
     return;
   }
   if (!hasDb()) {
