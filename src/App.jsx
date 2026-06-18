@@ -1340,6 +1340,7 @@ const CSS=`
  box-shadow:0 8px 20px rgba(14,123,102,.4);}
 .cc-brand-n{font-family:var(--serif);font-size:20px;font-weight:600;display:block;line-height:1;text-align:left;letter-spacing:-.01em;}
 .cc-brand-s{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);display:block;margin-top:4px;text-align:left;font-weight:600;}
+.cc-brand,.cc-tcard,.cc-act,.cc-card,.cc-acc-h{color:var(--ink);}
 .cc-home-btn{display:flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--line);border-radius:11px;padding:9px 14px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;font-family:var(--sans);box-shadow:var(--shadow);transition:.15s;}
 .cc-home-btn:hover{border-color:var(--teal);color:var(--teal);transform:translateY(-1px);}
 .cc-icon-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;background:var(--surf);border:1px solid var(--line);color:var(--ink2);cursor:pointer;box-shadow:var(--shadow);transition:.15s;}
