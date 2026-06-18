@@ -750,6 +750,7 @@ export default function App(){
     const u=localStorage.getItem(UKEY); if(u){ try{ setUser(JSON.parse(u)); }catch{} } }catch{} },[]);
   useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
   useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
+  useEffect(()=>{ try{ var d=document.documentElement; d.style.backgroundColor = theme==="dark"?"#0B1310":"#F7F6F1"; d.style.colorScheme = theme==="dark"?"dark":"light"; }catch{} },[theme]);
 
   const save=useCallback(async(p)=>{ setProg(p); await sSet(PKEY,JSON.stringify(p)); },[]);
   function tp(id){ return prog[id]||{cardsKnown:[],quizBest:0,hw:{}}; }
@@ -1359,6 +1360,7 @@ const CSS=`
 /* header */
 .cc-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;
  background:color-mix(in srgb,var(--paper) 78%,transparent);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line);}
+.cc-top-r{display:flex;align-items:center;gap:9px;flex:0 0 auto;}
 .cc-brand{display:flex;align-items:center;gap:11px;background:transparent;border:0;cursor:pointer;font-family:var(--sans);}
 .cc-brand-m{width:40px;height:40px;border-radius:12px;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;
  box-shadow:0 8px 20px rgba(14,123,102,.4);}
@@ -1685,6 +1687,7 @@ const CSS=`
 }
 
 /* ===== design polish (additive, complements existing design) ===== */
+html,body{margin:0;padding:0;}
 .cc-tcard{position:relative;overflow:hidden;}
 .cc-tcard::after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);transform:scaleX(0);transform-origin:left;transition:transform .28s ease;}
 .cc-tcard:hover::after{transform:scaleX(1);}
