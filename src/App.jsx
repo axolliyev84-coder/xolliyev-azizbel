@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   BookOpen, Layers, Calculator, ClipboardList, Sparkles, GraduationCap,
   Check, X, RotateCcw, ArrowRight, ArrowLeft, RefreshCw, Loader2, Home,
   Lightbulb, AlertTriangle, ChevronDown, Eye, EyeOff, Trophy, Target,
   FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
-  Sun, Moon, LogIn, LogOut, Flame, Coins, Scale, Landmark, Percent, TrendingUp, Building2, Receipt
+  Sun, Moon, LogIn, LogOut, Flame, Coins, Scale, Landmark, Percent, TrendingUp, Building2, Receipt, Trash2
 } from "lucide-react";
 
 /* ===================== STORAGE (localStorage) ===================== */
@@ -748,7 +748,10 @@ export default function App(){
   useEffect(()=>{(async()=>{ const raw=await sGet(PKEY); if(raw){try{setProg(JSON.parse(raw));}catch{}} setReady(true); })();},[]);
   useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t);
     const u=localStorage.getItem(UKEY); if(u){ try{ setUser(JSON.parse(u)); }catch{} } }catch{} },[]);
+  const visitSent = useRef(false);
   useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
+  useEffect(()=>{ try{ const bg = theme==="dark" ? "#0B1310" : "#F7F6F1"; document.documentElement.style.background=bg; document.body.style.background=bg; document.body.style.margin="0"; }catch{} },[theme]);
+  useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
   useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
   useEffect(()=>{ try{ var d=document.documentElement; d.style.backgroundColor = theme==="dark"?"#0B1310":"#F7F6F1"; d.style.colorScheme = theme==="dark"?"dark":"light"; }catch{} },[theme]);
 
@@ -756,8 +759,8 @@ export default function App(){
   function tp(id){ return prog[id]||{cardsKnown:[],quizBest:0,hw:{}}; }
   function setTP(id,patch){ const cur=tp(id); save({...prog,[id]:{...cur,...patch}}); }
   function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
-  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); const s=progStats(prog); sendEvent({u:u.name,t:"login",d:"",cards:s.cards,avg:s.avg}); }
-  function logout(){ setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
+  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
+  function logout(){ visitSent.current=false; setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
   function track(type,detail){ if(!user) return; const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
@@ -1202,13 +1205,20 @@ function ExamTests({prog,save,track}){
 function AdminView({theme,toggleTheme}){
   const [pass,setPass]=useState(""); const [authed,setAuthed]=useState(false);
   const [data,setData]=useState({events:[],db:true});
-  const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [loaded,setLoaded]=useState(null);
+  const [err,setErr]=useState(""); const [busy,setBusy]=useState(false); const [loaded,setLoaded]=useState(null); const [clearing,setClearing]=useState(false);
   async function load(k){ if(!k.trim()) return; setBusy(true); setErr("");
     try{ const r=await fetch("/api/admin",{headers:{"x-admin-key":k}});
       if(r.status===401){ setErr("Неверный пароль"); setBusy(false); return; }
       if(!r.ok){ setErr("Ошибка сервера ("+r.status+")"); setBusy(false); return; }
       const d=await r.json(); setData(d); setAuthed(true); setLoaded(new Date());
     }catch{ setErr("Нет соединения"); } finally{ setBusy(false); }
+  }
+  async function clearHistory(){
+    if(typeof window!=="undefined" && !window.confirm("Удалить всю историю активности учеников? Это действие необратимо.")) return;
+    setClearing(true); setErr("");
+    try{ const r=await fetch("/api/admin",{method:"DELETE",headers:{"x-admin-key":pass}});
+      if(r.ok){ await load(pass); } else { setErr("Не удалось очистить ("+r.status+")"); }
+    }catch{ setErr("Нет соединения"); } finally{ setClearing(false); }
   }
   if(!authed) return (
     <div className="cc-gate">
@@ -1304,7 +1314,7 @@ function AdminView({theme,toggleTheme}){
             </div>
           ))}
         </div>
-        <div className="cc-note-lead" style={{margin:"22px 0 8px"}}>Последние действия</div>
+        <div className="cc-feed-head"><span className="cc-note-lead" style={{margin:0}}>Последние действия</span><button className="cc-btn ghost sm" disabled={clearing||events.length===0} onClick={clearHistory} title="Очистить всю историю">{clearing?<span className="cc-sp"><Loader2 size={14} className="cc-spin"/> Очистка…</span>:<><Trash2 size={14}/> Очистить историю</>}</button></div>
         <div className="cc-adm-feed">
           {events.slice(0,30).map((e,i)=>(
             <div className="cc-adm-fi" key={i}>
@@ -1338,7 +1348,7 @@ const CSS=`
    var(--paper);
  min-height:100vh;-webkit-font-smoothing:antialiased;}
 .cc.dark{
- --paper:#0B1310;--surf:#121C18;--surf2:#1B2721;--ink:#EAF1EC;--ink2:#AEB9B2;--mut:#79857D;--line:#1E2A24;
+ --paper:#0B1310;--surf:#121C18;--surf2:#1B2721;--ink:#EAF1EC;--ink2:#C4CDC8;--mut:#93A09A;--line:#1E2A24;
  --teal:#3FB89A;--tealD:#6FD3B8;--tealT:#15261F;
  --amber:#D2A24E;--amberT:#2A2310;--green:#4BC07E;--greenT:#15271B;--red:#E8786E;--redT:#2C1714;
  --grad:linear-gradient(135deg,#2FA587 0%,#1C7C66 100%);
@@ -1350,6 +1360,8 @@ const CSS=`
    radial-gradient(900px 460px at 92% -10%,rgba(63,184,154,.10),transparent 60%),
    var(--paper);}
 .cc *{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+.cc-feed-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 8px;flex-wrap:wrap;}
 .cc :focus{outline:none;}
 .cc :focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
 .cc hr{border:0;border-top:1px solid var(--line);}
