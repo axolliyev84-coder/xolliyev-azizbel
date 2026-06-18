@@ -811,7 +811,7 @@ export default function App(){
         </div>
       </header>
 
-      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
+      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id,tabName)=>{setTopicId(id);setTab(tabName||"theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
       {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")} track={track}/>}
       {view==="hw" && <HomeworkHub goHome={()=>setView("home")}/>}
       {view==="exam" && <ExamView prog={prog} save={save} track={track} goHome={()=>setView("home")}/>}
@@ -825,36 +825,63 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
   const knownCards=TOPICS.reduce((s,t)=>s+tp(t.id).cardsKnown.length,0);
   const avgQuiz=Math.round(TOPICS.reduce((s,t)=>s+tp(t.id).quizBest,0)/TOPICS.length);
   const hwCount=TOPICS.reduce((s,t)=>s+t.homeworks.length,0);
+  const coursePct=totalCards?Math.round(knownCards/totalCards*100):0;
+  const CIRC=465, off=CIRC-CIRC*coursePct/100;
+  const COL=["em","sky","amb","vio"];
+  const STAT=[
+    {ic:<Layers size={18}/>,c:"em",b:knownCards+"/"+totalCards,s:"карточек выучено"},
+    {ic:<Percent size={18}/>,c:"amb",b:avgQuiz+"%",s:"средний балл теста"},
+    {ic:<Receipt size={18}/>,c:"sky",b:hwCount,s:"домашних заданий"},
+    {ic:<BookOpen size={18}/>,c:"vio",b:TOPICS.length,s:"активные темы"},
+  ];
   return(
     <main className="cc-main">
       <div className="cc-hero">
         <div className="cc-hero-glow"/>
-        <div className="cc-hero-ic" aria-hidden="true"><Landmark size={62}/><Scale size={50}/><Coins size={44}/><Percent size={38}/></div>
-        <div className="cc-kick">{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
-        <h1 className="cc-h1">Что изучаем сегодня?</h1>
-        <p className="cc-lead">{SRC}. Выберите тему — внутри теория, карточки для зубрёжки, разобранные задачи, тесты и ИИ-репетитор.</p>
-        <div className="cc-hero-tags"><span><Receipt size={13}/> ОФП</span><span><TrendingUp size={13}/> ОСД</span><span><Building2 size={13}/> ОС</span><span><Coins size={13}/> Запасы</span></div>
+        <div className="cc-hero-ic" aria-hidden="true"><Landmark size={56}/><Scale size={46}/><Coins size={40}/><Percent size={34}/></div>
+        <div className="cc-hero-l">
+          <div className="cc-kick">{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
+          <h1 className="cc-h1">Что изучаем <span className="cc-grad">сегодня?</span></h1>
+          <p className="cc-lead">Курс «Сертифицированный главный бухгалтер» (ABCO): конспекты, карточки для зубрёжки, разобранные задачи, тесты и ИИ-репетитор — всё в одном месте.</p>
+          <div className="cc-cta-row">
+            <button className="cc-btn primary" onClick={()=>open(TOPICS[0].id)}>Продолжить обучение <ArrowRight size={16}/></button>
+            <button className="cc-btn ghost" onClick={()=>open(TOPICS[0].id,"tutor")}><Sparkles size={15}/> Спросить ИИ-репетитора</button>
+          </div>
+          <div className="cc-hero-tags"><span><Receipt size={13}/> ОФП</span><span><TrendingUp size={13}/> ОСД</span><span><Building2 size={13}/> ОС</span><span><Coins size={13}/> Запасы</span></div>
+        </div>
+        <div className="cc-ring-card">
+          <div className="cc-ring">
+            <svg width="150" height="150" viewBox="0 0 170 170">
+              <circle className="cc-rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
+              <circle className="cc-rprog" cx="85" cy="85" r="74" fill="none" stroke="url(#ccring)" strokeWidth="12" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={off} transform="rotate(-90 85 85)"/>
+              <defs><linearGradient id="ccring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#34D399"/><stop offset="1" stopColor="#38BDF8"/></linearGradient></defs>
+            </svg>
+            <div className="cc-ring-v"><b>{coursePct}%</b><small>прогресс курса</small></div>
+          </div>
+        </div>
       </div>
 
       <div className="cc-stats">
-        <div className="cc-stat"><Layers size={16}/><b>{knownCards}/{totalCards}</b><small>карточек выучено</small></div>
-        <div className="cc-stat"><Percent size={16}/><b>{avgQuiz}%</b><small>средний тест</small></div>
-        <div className="cc-stat"><Receipt size={16}/><b>{hwCount}</b><small>домашних заданий</small></div>
-        <div className="cc-stat"><BookOpen size={16}/><b>{TOPICS.length}</b><small>темы</small></div>
+        {STAT.map((s,i)=>(
+          <div className={"cc-stat "+s.c} key={i}>
+            <span className="cc-stat-ic">{s.ic}</span>
+            <b>{s.b}</b><small>{s.s}</small>
+          </div>
+        ))}
       </div>
 
       <div className="cc-topics">
         {TOPICS.map((t,i)=>{
-          const p=tp(t.id); const cardPct=Math.round(p.cardsKnown.length/t.cards.length*100);
+          const p=tp(t.id); const cardPct=Math.round(p.cardsKnown.length/t.cards.length*100); const c=COL[i%COL.length];
           return(
-            <button key={t.id} className="cc-tcard" onClick={()=>open(t.id)}>
+            <button key={t.id} className={"cc-tcard "+c} onClick={()=>open(t.id)}>
               <div className="cc-tcard-top">
-                <span className="cc-tcode">{t.code}</span>
+                <span className={"cc-tcode "+c}>{t.code}</span>
                 <ArrowRight size={16} className="cc-tcard-arr"/>
               </div>
               <div className="cc-tcard-title">{t.title}</div>
               <div className="cc-tcard-meta">{t.theory.length} разделов · {t.cards.length} карточек · {t.quiz.length} тестов</div>
-              <Track v={cardPct}/>
+              <div className="cc-track"><div className={"cc-track-f "+c} style={{width:cardPct+"%"}}/></div>
               <div className="cc-tcard-foot"><span>{p.cardsKnown.length}/{t.cards.length} карточек</span><span>тест {p.quizBest}%</span></div>
             </button>
           );
@@ -862,7 +889,7 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
       </div>
 
       <div className="cc-actions">
-        <button className="cc-act" onClick={goHw}><PenTool size={18}/><div><b>Домашние задания</b><small>Все задачи для самостоятельного решения</small></div><ArrowRight size={16}/></button>
+        <button className="cc-act sky" onClick={goHw}><PenTool size={18}/><div><b>Домашние задания</b><small>Все задачи для самостоятельного решения</small></div><ArrowRight size={16}/></button>
         <button className="cc-act amber" onClick={goExam}><Award size={18}/><div><b>Экзамен</b><small>Задачи с решениями и смешанные тесты</small></div><ArrowRight size={16}/></button>
       </div>
     </main>
@@ -1331,33 +1358,44 @@ function AdminView({theme,toggleTheme}){
 
 /* ===================== CSS ===================== */
 const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 
 .cc{
- --paper:#F7F6F1;--surf:#FFFFFF;--surf2:#F0F1EC;--ink:#16211D;--ink2:#475650;--mut:#8A938C;--line:#E6E6DD;
- --teal:#0E7B66;--tealD:#0A5A4B;--tealT:#E6F2EE;
- --amber:#B07D24;--amberT:#F6EFDC;--green:#2E9E5B;--greenT:#E7F4EC;--red:#C0473F;--redT:#F8E9E7;
- --grad:linear-gradient(135deg,#11876F 0%,#0A5A4B 100%);
- --grad-soft:linear-gradient(180deg,rgba(14,123,102,.07),rgba(14,123,102,.03));
- --gold:linear-gradient(135deg,#C99A3F 0%,#A2761E 100%);
- --shadow:0 1px 2px rgba(20,33,29,.04),0 6px 18px rgba(20,33,29,.05);
- --shadow-lg:0 16px 44px rgba(12,60,49,.13);
- --serif:'Fraunces',Georgia,serif;--sans:'Plus Jakarta Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+ --paper:#EDF3F0;--surf:#FFFFFF;--surf2:#EAF1ED;--ink:#0E1B17;--ink2:#34433D;--mut:#586862;--line:rgba(16,40,34,.12);
+ --teal:#0F766E;--tealD:#0F766E;--tealT:rgba(15,118,110,.10);
+ --amber:#B45309;--amberT:rgba(180,83,9,.10);--green:#15803D;--greenT:rgba(21,128,61,.10);--red:#B91C1C;--redT:rgba(185,28,28,.09);
+ --emerald:#14B8A6;--sky:#0EA5E9;--violet:#8B5CF6;--rose:#F43F5E;
+ --t-em:#0F766E;--t-sky:#0369A1;--t-amb:#B45309;--t-vio:#6D28D9;--t-rose:#BE123C;
+ --em-bg:rgba(20,184,166,.12);--sky-bg:rgba(14,165,233,.12);--amb-bg:rgba(245,158,11,.14);--vio-bg:rgba(139,92,246,.13);--rose-bg:rgba(244,63,94,.12);
+ --grad:linear-gradient(135deg,#14B8A6,#0EA5A4);
+ --grad-soft:linear-gradient(180deg,rgba(20,184,166,.06),rgba(20,184,166,.02));
+ --gold:linear-gradient(135deg,#F59E0B,#B45309);
+ --hero-bg:radial-gradient(600px 320px at 88% 6%,rgba(20,184,166,.16),transparent 60%),linear-gradient(160deg,#E7F6F0 0%,#FFFFFF 62%);
+ --shadow:0 1px 2px rgba(16,40,34,.04),0 6px 18px rgba(16,40,34,.06);
+ --shadow-lg:0 18px 48px rgba(12,60,49,.14);
+ --serif:'Unbounded',system-ui,sans-serif;--sans:'Manrope',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
  font-family:var(--sans);color:var(--ink);background:
-   radial-gradient(900px 460px at 92% -10%,rgba(14,123,102,.06),transparent 60%),
+   radial-gradient(900px 500px at 10% -8%,rgba(20,184,166,.10),transparent 60%),
+   radial-gradient(820px 520px at 96% 0%,rgba(139,92,246,.06),transparent 55%),
    var(--paper);
  min-height:100vh;-webkit-font-smoothing:antialiased;}
 .cc.dark{
- --paper:#0B1310;--surf:#121C18;--surf2:#1B2721;--ink:#EAF1EC;--ink2:#C4CDC8;--mut:#93A09A;--line:#1E2A24;
- --teal:#3FB89A;--tealD:#6FD3B8;--tealT:#15261F;
- --amber:#D2A24E;--amberT:#2A2310;--green:#4BC07E;--greenT:#15271B;--red:#E8786E;--redT:#2C1714;
- --grad:linear-gradient(135deg,#2FA587 0%,#1C7C66 100%);
- --grad-soft:linear-gradient(180deg,rgba(63,184,154,.10),rgba(63,184,154,.04));
- --gold:linear-gradient(135deg,#D7AE5A 0%,#B68A30 100%);
- --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.38);
- --shadow-lg:0 22px 56px rgba(0,0,0,.5);
+ --paper:#080B0A;--surf:#101715;--surf2:#0E1413;--ink:#F3F7F5;--ink2:#C3D0CB;--mut:#8A9A92;--line:rgba(255,255,255,.08);
+ --teal:#2DD4BF;--tealD:#7DE9D8;--tealT:rgba(45,212,191,.13);
+ --amber:#FBBF24;--amberT:rgba(251,191,36,.14);--green:#34D399;--greenT:rgba(52,211,153,.13);--red:#FB7185;--redT:rgba(251,113,133,.13);
+ --emerald:#2DD4BF;--sky:#38BDF8;--violet:#A78BFA;--rose:#FB7185;
+ --t-em:#7DE9D8;--t-sky:#9AD7F8;--t-amb:#FBD37A;--t-vio:#C7B5FB;--t-rose:#FDA4AF;
+ --em-bg:rgba(45,212,191,.13);--sky-bg:rgba(56,189,248,.13);--amb-bg:rgba(251,191,36,.14);--vio-bg:rgba(167,139,250,.15);--rose-bg:rgba(251,113,133,.14);
+ --grad:linear-gradient(135deg,#34D399,#14B8A6);
+ --grad-soft:linear-gradient(180deg,rgba(45,212,191,.10),rgba(45,212,191,.035));
+ --gold:linear-gradient(135deg,#FBBF24,#F59E0B);
+ --hero-bg:radial-gradient(600px 320px at 88% 6%,rgba(45,212,191,.22),transparent 60%),linear-gradient(160deg,#11201C 0%,#0C1513 62%);
+ --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.42);
+ --shadow-lg:0 22px 56px rgba(0,0,0,.55);
  background:
-   radial-gradient(900px 460px at 92% -10%,rgba(63,184,154,.10),transparent 60%),
+   radial-gradient(900px 500px at 10% -8%,rgba(45,212,191,.15),transparent 60%),
+   radial-gradient(820px 520px at 96% 0%,rgba(167,139,250,.12),transparent 55%),
+   radial-gradient(700px 600px at 60% 120%,rgba(56,189,248,.09),transparent 60%),
    var(--paper);}
 .cc *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -1707,4 +1745,43 @@ html,body{margin:0;padding:0;}
 .cc-stat{transition:transform .18s ease;}
 .cc-stat:hover{transform:translateY(-2px);}
 .cc-act:hover .cc-act-ic,.cc-act:hover svg:first-child{transform:scale(1.08);transition:transform .18s ease;}
+
+/* ===== premium home (concept) ===== */
+.cc-hero{display:grid;grid-template-columns:1fr auto;gap:30px;align-items:center;background:var(--hero-bg);border:1px solid var(--line);}
+.cc-hero-l{position:relative;z-index:1;min-width:0;}
+.cc-grad{background:linear-gradient(100deg,#34D399,#38BDF8 60%,#A78BFA);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.cc-cta-row{display:flex;flex-wrap:wrap;gap:11px;margin-top:18px;}
+.cc-cta-row .cc-btn{font-size:14px;padding:13px 20px;}
+.cc-ring-card{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;flex:none;}
+.cc-ring{position:relative;width:150px;height:150px;}
+.cc-rtrack{stroke:var(--surf2);}
+.cc-rprog{transition:stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1);}
+.cc-ring-v{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.cc-ring-v b{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1;color:var(--ink);letter-spacing:-.02em;}
+.cc-ring-v small{font-size:11px;color:var(--mut);margin-top:5px;}
+.cc-stat{flex-direction:column;align-items:flex-start;gap:3px;}
+.cc-stat-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.cc-stat .cc-stat-ic svg{color:inherit;}
+.cc-stat b{margin-top:0;}
+.cc-stat.em .cc-stat-ic{background:var(--em-bg);color:var(--t-em);}
+.cc-stat.sky .cc-stat-ic{background:var(--sky-bg);color:var(--t-sky);}
+.cc-stat.amb .cc-stat-ic{background:var(--amb-bg);color:var(--t-amb);}
+.cc-stat.vio .cc-stat-ic{background:var(--vio-bg);color:var(--t-vio);}
+.cc-tcard::after{display:none;}
+.cc-tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;height:auto;opacity:1;background:var(--teal);border-radius:4px 0 0 4px;transition:none;}
+.cc-tcard.em::before{background:var(--emerald);} .cc-tcard.sky::before{background:var(--sky);} .cc-tcard.amb::before{background:var(--amber);} .cc-tcard.vio::before{background:var(--violet);}
+.cc-tcard.em:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--emerald) 55%,transparent);}
+.cc-tcard.sky:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--sky) 55%,transparent);}
+.cc-tcard.amb:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--amber) 50%,transparent);}
+.cc-tcard.vio:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--violet) 55%,transparent);}
+.cc-tcode.em{background:var(--em-bg);color:var(--t-em);} .cc-tcode.sky{background:var(--sky-bg);color:var(--t-sky);} .cc-tcode.amb{background:var(--amb-bg);color:var(--t-amb);} .cc-tcode.vio{background:var(--vio-bg);color:var(--t-vio);}
+.cc-track-f.em{background:linear-gradient(90deg,#34D399,#2DD4BF);} .cc-track-f.sky{background:linear-gradient(90deg,#38BDF8,#0EA5E9);} .cc-track-f.amb{background:linear-gradient(90deg,#FBBF24,#F59E0B);} .cc-track-f.vio{background:linear-gradient(90deg,#A78BFA,#8B5CF6);}
+.cc-act.sky>svg:first-child{background:var(--sky-bg);color:var(--t-sky);}
+@media(max-width:680px){
+ .cc-hero{grid-template-columns:1fr;gap:20px;}
+ .cc-ring-card{order:-1;align-self:flex-start;}
+ .cc-ring{width:116px;height:116px;}
+ .cc-ring-v b{font-size:24px;}
+ .cc-cta-row .cc-btn{flex:1;justify-content:center;}
+}
 `;
