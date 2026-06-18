@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.mcfo_sayt.twa",
+      "sha256_cert_fingerprints": [
+        "27:CF:77:76:31:91:C0:9A:78:92:08:06:2C:F6:A7:A8:C8:D2:40:9D:CD:8C:6F:08:84:E2:0B:68:D3:84:BF:DC"
+      ]
+    }
+  }
+]
