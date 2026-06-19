@@ -882,7 +882,7 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
               <div className="cc-tcard-title">{t.title}</div>
               <div className="cc-tcard-meta">{t.theory.length} разделов · {t.cards.length} карточек · {t.quiz.length} тестов</div>
               <div className="cc-track"><div className={"cc-track-f "+c} style={{width:cardPct+"%"}}/></div>
-              <div className="cc-tcard-foot"><span>{p.cardsKnown.length}/{t.cards.length} карточек</span><span>тест {p.quizBest}%</span></div>
+              <div className="cc-tcard-foot"><span>{p.cardsKnown.length}/{t.cards.length} · {cardPct}%</span><span>тест {p.quizBest}%</span></div>
             </button>
           );
         })}
@@ -1784,4 +1784,11 @@ html,body{margin:0;padding:0;}
  .cc-ring-v b{font-size:24px;}
  .cc-cta-row .cc-btn{flex:1;justify-content:center;}
 }
+
+/* ===== v2/v3 polish (premium depth, a11y) ===== */
+.cc-stat b,.cc-ring-v b,.cc-done-p,.cc-tcard-foot,.cc-quiz-top{font-variant-numeric:tabular-nums;}
+.cc-rprog{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--emerald) 55%,transparent));}
+.cc.dark .cc-stat,.cc.dark .cc-tcard,.cc.dark .cc-act,.cc.dark .cc-acc-i,.cc.dark .cc-card,.cc.dark .cc-apanel,.cc.dark .cc-task{box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.05);}
+.cc-hero::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--emerald),var(--sky),var(--violet));opacity:.5;z-index:1;}
+@media (prefers-reduced-motion: reduce){ .cc *,.cc *::before,.cc *::after{animation:none!important;transition:none!important;} }
 `;
