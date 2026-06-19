@@ -4,7 +4,8 @@ import {
   Check, X, RotateCcw, ArrowRight, ArrowLeft, RefreshCw, Loader2, Home,
   Lightbulb, AlertTriangle, ChevronDown, Eye, EyeOff, Trophy, Target,
   FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
-  Sun, Moon, LogIn, LogOut, Flame, Coins, Scale, Landmark, Percent, TrendingUp, Building2, Receipt, Trash2
+  Sun, Moon, LogIn, LogOut, Gauge, Flame, Star, PieChart, DollarSign, BarChart3,
+  Landmark, Scale, Coins, Percent, Receipt, TrendingUp, Building2, Trash2
 } from "lucide-react";
 
 /* ===================== STORAGE (localStorage) ===================== */
@@ -42,6 +43,26 @@ function fmtTime(ts){ if(!ts) return "—"; const d=new Date(ts), now=new Date()
   if(d.toDateString()===now.toDateString()) return "сегодня, "+hm;
   const y=new Date(now); y.setDate(now.getDate()-1); if(d.toDateString()===y.toDateString()) return "вчера, "+hm;
   return d.getDate().toString().padStart(2,"0")+"."+(d.getMonth()+1).toString().padStart(2,"0")+", "+hm; }
+
+/* ===================== ACTIVITY (реальная геймификация: серия дней, цель, неделя) ===================== */
+const AKEY = "mscfo_act_v1";       // { "2026-06-19": 3, ... } — учебных действий за день
+const DAY_GOAL = 5;                 // цель: 5 учебных действий в день
+function actGet(){ try{ return JSON.parse(localStorage.getItem(AKEY)||"{}")||{}; }catch{ return {}; } }
+function dayKey(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function recordActivity(){ try{ const m=actGet(); const k=dayKey(); m[k]=(m[k]||0)+1; localStorage.setItem(AKEY,JSON.stringify(m)); }catch{} }
+function todayCount(){ return actGet()[dayKey()]||0; }
+function getStreak(){ const m=actGet(); let s=0; const d=new Date();
+  if(!(m[dayKey(d)]>0)) d.setDate(d.getDate()-1);           // сегодня ещё нет активности → считаем со вчера
+  while(m[dayKey(d)]>0){ s++; d.setDate(d.getDate()-1); }
+  return s; }
+function getWeek(){ const m=actGet(); const L=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"]; const out=[]; const t=new Date();
+  for(let i=6;i>=0;i--){ const d=new Date(t); d.setDate(t.getDate()-i); out.push({label:L[d.getDay()],count:m[dayKey(d)]||0,today:i===0}); }
+  return out; }
+function weekDelta(){ const m=actGet(); const t=new Date(); let cur=0,prev=0;
+  for(let i=0;i<7;i++){ const d=new Date(t); d.setDate(t.getDate()-i); cur+=m[dayKey(d)]||0; }
+  for(let i=7;i<14;i++){ const d=new Date(t); d.setDate(t.getDate()-i); prev+=m[dayKey(d)]||0; }
+  if(prev<=0) return null;
+  return Math.round((cur-prev)/prev*100); }
 
 /* ===================== CONTENT (из материалов студента) ===================== */
 const SRC = "Курс «Сертифицированный главный бухгалтер» (АВСО) — ваши конспекты, тесты, Excel и решения";
@@ -751,7 +772,7 @@ export default function App(){
   const visitSent = useRef(false);
   useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
   useEffect(()=>{ try{ const bg = theme==="dark" ? "#0B1310" : "#F7F6F1"; document.documentElement.style.background=bg; document.body.style.background=bg; document.body.style.margin="0"; }catch{} },[theme]);
-  useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
+  useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
   useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
   useEffect(()=>{ try{ var d=document.documentElement; d.style.backgroundColor = theme==="dark"?"#0B1310":"#F7F6F1"; d.style.colorScheme = theme==="dark"?"dark":"light"; }catch{} },[theme]);
 
@@ -761,7 +782,7 @@ export default function App(){
   function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
   function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
   function logout(){ visitSent.current=false; setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
-  function track(type,detail){ if(!user) return; const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
+  function track(type,detail){ if(!user) return; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
   const adminRoute = typeof window!=="undefined" && (/\/admin\/?$/.test(window.location.pathname) || window.location.hash==="#admin");
@@ -795,7 +816,7 @@ export default function App(){
     <div className={rootCls}>
       <header className="cc-top">
         <button className="cc-brand" onClick={()=>setView("home")}>
-          <span className="cc-brand-m"><Sparkles size={19}/></span>
+          <span className="cc-brand-m"><TrendingUp size={19}/></span>
           <span><span className="cc-brand-n">MCFO Kurs AI</span><span className="cc-brand-s">ИИ-репетитор · курс МСФО</span></span>
         </button>
         <div className="cc-top-r">
@@ -820,80 +841,199 @@ export default function App(){
 }
 
 /* ---------- HOME ---------- */
+const SCENE=[
+  {l:"4%",t:"14%",s:48,c:"--emerald2",o:.18,a:"flA 15s",d:"-2s",I:TrendingUp},
+  {l:"11%",t:"54%",s:42,c:"--sky",o:.16,a:"flB 19s",d:"-6s",I:BarChart3},
+  {l:"7%",t:"82%",s:40,c:"--amber2",o:.15,a:"flC 16s",d:"-3s",I:DollarSign},
+  {l:"21%",t:"30%",s:34,c:"--violet",o:.15,a:"flB 22s",d:"-9s",I:PieChart},
+  {l:"30%",t:"72%",s:38,c:"--emerald2",o:.15,a:"flA 18s",d:"-5s",I:FileText},
+  {l:"42%",t:"10%",s:34,c:"--sky",o:.15,a:"flC 20s",d:"-1s",I:Calculator},
+  {l:"50%",t:"46%",s:30,c:"--amber2",o:.13,a:"flB 17s",d:"-11s",I:Receipt},
+  {l:"60%",t:"78%",s:42,c:"--violet",o:.15,a:"flA 21s",d:"-4s",I:Scale},
+  {l:"69%",t:"20%",s:40,c:"--emerald2",o:.16,a:"flC 14s",d:"-7s",I:TrendingUp},
+  {l:"78%",t:"60%",s:36,c:"--sky",o:.15,a:"flB 23s",d:"-2.5s",I:Coins},
+  {l:"88%",t:"16%",s:42,c:"--amber2",o:.16,a:"flA 16s",d:"-8s",I:Landmark},
+  {l:"92%",t:"50%",s:34,c:"--violet",o:.15,a:"flC 19s",d:"-5.5s",I:Percent},
+  {l:"84%",t:"84%",s:38,c:"--emerald2",o:.15,a:"flB 15s",d:"-10s",I:TrendingUp},
+  {l:"36%",t:"90%",s:32,c:"--sky",o:.13,a:"flA 20s",d:"-3.5s",I:BarChart3},
+  {l:"54%",t:"26%",s:30,c:"--amber2",o:.13,a:"flC 18s",d:"-12s",I:Coins},
+  {l:"17%",t:"8%",s:30,c:"--violet",o:.13,a:"flB 21s",d:"-1.5s",I:Layers},
+];
+
 function HomeView({prog,tp,user,open,goHw,goExam}){
+  const ref=useRef(null);
+  const COL=["em","sky","amb","vio"];
+  const dl=n=>{const a=n%100,b=n%10; if(a>10&&a<20)return"дней"; if(b===1)return"день"; if(b>=2&&b<=4)return"дня"; return"дней";};
+
+  // ---- РЕАЛЬНЫЕ данные (никаких выдуманных чисел) ----
   const totalCards=TOPICS.reduce((s,t)=>s+t.cards.length,0);
   const knownCards=TOPICS.reduce((s,t)=>s+tp(t.id).cardsKnown.length,0);
   const avgQuiz=Math.round(TOPICS.reduce((s,t)=>s+tp(t.id).quizBest,0)/TOPICS.length);
-  const hwCount=TOPICS.reduce((s,t)=>s+t.homeworks.length,0);
+  const maxQuiz=Math.max(0,...TOPICS.map(t=>tp(t.id).quizBest));
+  const hwTotal=TOPICS.reduce((s,t)=>s+t.homeworks.length,0);
+  const hwDone=TOPICS.reduce((s,t)=>s+Object.keys(tp(t.id).hw||{}).length,0);
+  const topicsStarted=TOPICS.filter(t=>tp(t.id).cardsKnown.length>0||tp(t.id).quizBest>0).length;
   const coursePct=totalCards?Math.round(knownCards/totalCards*100):0;
-  const CIRC=465, off=CIRC-CIRC*coursePct/100;
-  const COL=["em","sky","amb","vio"];
-  const STAT=[
-    {ic:<Layers size={18}/>,c:"em",b:knownCards+"/"+totalCards,s:"карточек выучено"},
-    {ic:<Percent size={18}/>,c:"amb",b:avgQuiz+"%",s:"средний балл теста"},
-    {ic:<Receipt size={18}/>,c:"sky",b:hwCount,s:"домашних заданий"},
-    {ic:<BookOpen size={18}/>,c:"vio",b:TOPICS.length,s:"активные темы"},
-  ];
-  return(
-    <main className="cc-main">
-      <div className="cc-hero">
-        <div className="cc-hero-glow"/>
-        <div className="cc-hero-ic" aria-hidden="true"><Landmark size={56}/><Scale size={46}/><Coins size={40}/><Percent size={34}/></div>
-        <div className="cc-hero-l">
-          <div className="cc-kick">{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
-          <h1 className="cc-h1">Что изучаем <span className="cc-grad">сегодня?</span></h1>
-          <p className="cc-lead">Курс «Сертифицированный главный бухгалтер» (ABCO): конспекты, карточки для зубрёжки, разобранные задачи, тесты и ИИ-репетитор — всё в одном месте.</p>
-          <div className="cc-cta-row">
-            <button className="cc-btn primary" onClick={()=>open(TOPICS[0].id)}>Продолжить обучение <ArrowRight size={16}/></button>
-            <button className="cc-btn ghost" onClick={()=>open(TOPICS[0].id,"tutor")}><Sparkles size={15}/> Спросить ИИ-репетитора</button>
-          </div>
-          <div className="cc-hero-tags"><span><Receipt size={13}/> ОФП</span><span><TrendingUp size={13}/> ОСД</span><span><Building2 size={13}/> ОС</span><span><Coins size={13}/> Запасы</span></div>
-        </div>
-        <div className="cc-ring-card">
-          <div className="cc-ring">
-            <svg width="150" height="150" viewBox="0 0 170 170">
-              <circle className="cc-rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
-              <circle className="cc-rprog" cx="85" cy="85" r="74" fill="none" stroke="url(#ccring)" strokeWidth="12" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={off} transform="rotate(-90 85 85)"/>
-              <defs><linearGradient id="ccring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#34D399"/><stop offset="1" stopColor="#38BDF8"/></linearGradient></defs>
-            </svg>
-            <div className="cc-ring-v"><b>{coursePct}%</b><small>прогресс курса</small></div>
-          </div>
-        </div>
-      </div>
+  const CIRC=465;
+  const streak=getStreak();
+  const today=todayCount();
+  const goalPct=Math.min(Math.round(today/DAY_GOAL*100),100);
+  const week=getWeek();
+  const wkMax=Math.max(1,...week.map(d=>d.count));
+  let hotIdx=0; week.forEach((d,i)=>{ if(d.count>week[hotIdx].count) hotIdx=i; });
+  if(week[hotIdx].count===0) hotIdx=-1;
+  const delta=weekDelta();
+  const nextTopic=(TOPICS.find(t=>tp(t.id).cardsKnown.length<t.cards.length)||TOPICS[0]).id;
 
-      <div className="cc-stats">
+  const STAT=[
+    {c:"em", glow:true, I:<Layers size={19}/>,        num:knownCards,    suf:"", lab:"/"+totalCards+" карточек выучено", bar:coursePct},
+    {c:"amb",I:<Gauge size={19}/>,                     num:avgQuiz,       suf:"%",lab:"средний балл теста",            bar:avgQuiz},
+    {c:"sky",I:<ClipboardList size={19}/>,             num:hwDone,        suf:"", lab:"/"+hwTotal+" домашних сделано",   bar:hwTotal?Math.round(hwDone/hwTotal*100):0},
+    {c:"vio",I:<BookOpen size={19}/>,                  num:topicsStarted, suf:"", lab:"/"+TOPICS.length+" темы начаты",   bar:Math.round(topicsStarted/TOPICS.length*100)},
+  ];
+
+  useEffect(()=>{
+    const root=ref.current; if(!root) return;
+    const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ease=p=>1-Math.pow(1-p,3);
+    const rp=root.querySelector("#ccringp"), rv=root.querySelector("#ccringv");
+    if(reduce){
+      if(rp) rp.style.strokeDashoffset=CIRC-CIRC*coursePct/100;
+      if(rv) rv.textContent=coursePct+"%";
+      root.querySelectorAll("[data-c]").forEach(el=>{ el.textContent=el.dataset.c+(el.dataset.suf||""); });
+      root.querySelectorAll(".pbar i,.bar i,.gt i").forEach(i=>{ i.style.width=(i.dataset.w||0)+"%"; });
+      root.querySelectorAll(".bars .bk i").forEach(i=>{ i.style.height=(i.dataset.h||0)+"%"; });
+      return;
+    }
+    const rafs=[]; let t0=null;
+    const animRing=ts=>{ if(!t0)t0=ts; const p=Math.min((ts-t0)/1100,1),e=ease(p);
+      if(rp) rp.style.strokeDashoffset=CIRC-(CIRC*coursePct/100)*e;
+      if(rv) rv.textContent=Math.round(coursePct*e)+"%";
+      if(p<1) rafs.push(requestAnimationFrame(animRing)); };
+    rafs.push(requestAnimationFrame(animRing));
+    root.querySelectorAll("[data-c]").forEach(el=>{
+      const to=+el.dataset.c, suf=el.dataset.suf||""; let s=null;
+      const a=ts=>{ if(!s)s=ts; const p=Math.min((ts-s)/900,1); el.textContent=Math.round(to*ease(p))+suf; if(p<1) rafs.push(requestAnimationFrame(a)); };
+      rafs.push(requestAnimationFrame(a));
+    });
+    const timer=setTimeout(()=>{
+      root.querySelectorAll(".pbar i,.bar i,.gt i").forEach(i=>{ i.style.width=(i.dataset.w||0)+"%"; });
+      root.querySelectorAll(".bars .bk i").forEach(i=>{ i.style.height=(i.dataset.h||0)+"%"; });
+    },300);
+    return ()=>{ rafs.forEach(cancelAnimationFrame); clearTimeout(timer); };
+  },[coursePct]);
+
+  return(<>
+    <div className="cc-scene" aria-hidden="true">
+      {SCENE.map((f,i)=>(
+        <div key={i} className="cc-fi" style={{left:f.l,top:f.t,width:f.s,height:f.s,color:"var("+f.c+")",opacity:f.o,animation:f.a+" ease-in-out infinite",animationDelay:f.d}}>
+          <f.I/>
+        </div>
+      ))}
+    </div>
+
+    <main className="cc-main ccx" ref={ref}>
+      <section className="hero frame reveal">
+        <div className="hero-l">
+          <div className="eyebrow"><span className="dot"></span>{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
+          <h2>Что изучаем <span className="grad">сегодня?</span></h2>
+          <p>Курс «Сертифицированный главный бухгалтер» (ABCO): конспекты, карточки, разобранные задачи, тесты и ИИ-репетитор — всё в одном месте.</p>
+          <div className="chips">
+            <span className="chip amb"><Flame size={15}/> {streak>0 ? streak+" "+dl(streak)+" подряд" : "Начни серию сегодня"}</span>
+            {maxQuiz>0 && <span className="chip em"><Star size={15}/> Лучший тест: {maxQuiz}%</span>}
+            <span className="chip"><Target size={15}/> Цель: {DAY_GOAL} занятий в день</span>
+          </div>
+          <div className="cta-row">
+            <button className="btn btn-primary" onClick={()=>open(nextTopic)}>Продолжить обучение <ArrowRight size={18}/></button>
+            <button className="btn btn-ghost" onClick={()=>open(nextTopic,"tutor")}><Sparkles size={18}/> Спросить ИИ-репетитора</button>
+          </div>
+          <div className="quick">
+            <span className="q-label">Быстрый переход</span>
+            {TOPICS.map((t,i)=>(
+              <span key={t.id} className="tag" onClick={()=>open(t.id)}>
+                <span className="d" style={{background:"var(--"+({em:"emerald",sky:"sky",amb:"amber2",vio:"violet"}[COL[i]])+")"}}></span>{t.code}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="ring-card">
+          <div className="ring">
+            <svg width="170" height="170" viewBox="0 0 170 170">
+              <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
+              <circle id="ccringp" cx="85" cy="85" r="74" fill="none" stroke="url(#ccg)" strokeWidth="12" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC}/>
+              <defs><linearGradient id="ccg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#34D399"/><stop offset="1" stopColor="#38BDF8"/></linearGradient></defs>
+            </svg>
+            <div className="pct"><b id="ccringv">0%</b><small>прогресс курса</small></div>
+          </div>
+          <div className="streak"><Flame size={16}/> {streak>0 ? streak+" "+dl(streak)+" подряд" : "Серия дней: 0"}</div>
+          <div className="goal">
+            <div className="gl"><span>Цель дня</span><span>{Math.min(today,DAY_GOAL)} / {DAY_GOAL}</span></div>
+            <div className="gt"><i data-w={goalPct} style={{width:0}}/></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="ai frame reveal" style={{animationDelay:".08s"}} onClick={()=>open(nextTopic,"tutor")}>
+        <div className="aic"><Sparkles size={27}/></div>
+        <div className="atxt">
+          <h4>ИИ-репетитор всегда рядом</h4>
+          <p>Объяснит проводку, разберёт задачу по МСФО и проверит твой открытый ответ — на русском, по программе курса.</p>
+        </div>
+        <div className="ago"><button className="btn btn-primary" onClick={(e)=>{e.stopPropagation();open(nextTopic,"tutor");}}>Спросить <ArrowRight size={18}/></button></div>
+      </section>
+
+      <div className="sec-head"><h3>Ваша статистика</h3></div>
+      <section className="stats">
         {STAT.map((s,i)=>(
-          <div className={"cc-stat "+s.c} key={i}>
-            <span className="cc-stat-ic">{s.ic}</span>
-            <b>{s.b}</b><small>{s.s}</small>
+          <div className={"stat reveal"+(s.glow?" glow-em":"")} style={{animationDelay:(.05+i*.05)+"s"}} key={i}>
+            <div className="stat-top"><div className={"ic e-"+s.c}>{s.I}</div></div>
+            <b data-c={s.num} data-suf={s.suf}>0{s.suf}</b><span>{s.lab}</span>
+            <div className="bar"><i className={"f-"+s.c} data-w={s.bar} style={{width:0}}/></div>
           </div>
         ))}
-      </div>
+      </section>
 
-      <div className="cc-topics">
+      <section className="spark reveal" style={{animationDelay:".12s"}}>
+        <div className="sh"><b>Активность за неделю</b>{delta!==null && <span><TrendingUp size={13}/> {delta>=0?"+":""}{delta}% к прошлой неделе</span>}</div>
+        <div className="bars">
+          {week.map((d,i)=>(
+            <div className={"col"+(i===hotIdx?" hot":"")} key={i}>
+              <div className="bk"><i data-h={Math.round(d.count/wkMax*100)} style={{height:0}}/></div>
+              <div className="dl">{d.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="sec-head"><h3>Темы курса</h3></div>
+      <section className="grid">
         {TOPICS.map((t,i)=>{
-          const p=tp(t.id); const cardPct=Math.round(p.cardsKnown.length/t.cards.length*100); const c=COL[i%COL.length];
+          const p=tp(t.id); const c=COL[i%COL.length];
+          const cardPct=Math.round(p.cardsKnown.length/t.cards.length*100);
+          const done=p.cardsKnown.length>=t.cards.length;
           return(
-            <button key={t.id} className={"cc-tcard "+c} onClick={()=>open(t.id)}>
-              <div className="cc-tcard-top">
-                <span className={"cc-tcode "+c}>{t.code}</span>
-                <ArrowRight size={16} className="cc-tcard-arr"/>
+            <div key={t.id} className={"mod "+c+" reveal"} style={{animationDelay:(.05+i*.05)+"s"}} onClick={()=>open(t.id)}>
+              <div className="mod-top"><span className={"badge b-"+c}>{t.code.toUpperCase()}</span><span className="arrow"><ArrowRight size={18}/></span></div>
+              <h4>{t.title}</h4>
+              <div className="meta">{t.theory.length} разд. · {t.cards.length} карточек · {t.quiz.length} тестов</div>
+              <div className="pwrap"><div className="pbar"><i className={"f-"+c} data-w={cardPct} style={{width:0}}/></div><span className="pval" data-c={cardPct} data-suf="%">0%</span></div>
+              <div className="mod-foot">
+                {done ? <span className="ok"><Check size={14}/> {p.cardsKnown.length} / {t.cards.length} карточек</span> : <span>{p.cardsKnown.length} / {t.cards.length} карточек</span>}
+                <span className={p.quizBest>0&&p.quizBest<50?"warn":""}>тест {p.quizBest}%</span>
               </div>
-              <div className="cc-tcard-title">{t.title}</div>
-              <div className="cc-tcard-meta">{t.theory.length} разделов · {t.cards.length} карточек · {t.quiz.length} тестов</div>
-              <div className="cc-track"><div className={"cc-track-f "+c} style={{width:cardPct+"%"}}/></div>
-              <div className="cc-tcard-foot"><span>{p.cardsKnown.length}/{t.cards.length} · {cardPct}%</span><span>тест {p.quizBest}%</span></div>
-            </button>
+            </div>
           );
         })}
-      </div>
+      </section>
 
-      <div className="cc-actions">
-        <button className="cc-act sky" onClick={goHw}><PenTool size={18}/><div><b>Домашние задания</b><small>Все задачи для самостоятельного решения</small></div><ArrowRight size={16}/></button>
-        <button className="cc-act amber" onClick={goExam}><Award size={18}/><div><b>Экзамен</b><small>Задачи с решениями и смешанные тесты</small></div><ArrowRight size={16}/></button>
-      </div>
+      <section className="two">
+        <div className="wide" onClick={goHw}><div className="wic e-sky"><PenTool size={24}/></div><div><h4>Домашние задания</h4><p>Все задачи для самостоятельного решения</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
+        <div className="wide" onClick={goExam}><div className="wic e-amb"><Trophy size={24}/></div><div><h4>Экзамен</h4><p>Задачи с решениями и смешанные тесты</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
+      </section>
     </main>
-  );
+
+    <div className="cc-mcta"><button className="btn btn-primary" onClick={()=>open(nextTopic)}>Продолжить обучение <ArrowRight size={18}/></button></div>
+  </>);
 }
 
 /* ---------- TOPIC ---------- */
@@ -1364,7 +1504,13 @@ const CSS=`
  --paper:#EDF3F0;--surf:#FFFFFF;--surf2:#EAF1ED;--ink:#0E1B17;--ink2:#34433D;--mut:#586862;--line:rgba(16,40,34,.12);
  --teal:#0F766E;--tealD:#0F766E;--tealT:rgba(15,118,110,.10);
  --amber:#B45309;--amberT:rgba(180,83,9,.10);--green:#15803D;--greenT:rgba(21,128,61,.10);--red:#B91C1C;--redT:rgba(185,28,28,.09);
- --emerald:#14B8A6;--sky:#0EA5E9;--violet:#8B5CF6;--rose:#F43F5E;
+ --emerald:#2DD4BF;--emerald2:#34D399;--sky:#38BDF8;--amber2:#FBBF24;--violet:#A78BFA;--rose:#FB7185;
+ --card:#FFFFFF;--card2:#FFFFFF;--line2:rgba(16,40,34,.18);--text:#0E1B17;--muted:#586862;--subtext:#34433D;
+ --soft:rgba(16,40,34,.03);--soft2:rgba(16,40,34,.05);--soft3:rgba(16,40,34,.09);--track:rgba(16,40,34,.10);
+ --header-bg:rgba(255,255,255,.74);--accent-strong:#0F766E;--noise:.022;--gi-op:.16;--mcta-bg:linear-gradient(0deg,rgba(255,255,255,.96),rgba(255,255,255,.6));
+ --frame:linear-gradient(135deg,rgba(15,118,110,.55),rgba(3,105,161,.35) 45%,rgba(109,40,217,.5));
+ --inner-hl:inset 0 1px 0 rgba(255,255,255,.7);--shadow-card:0 16px 36px -26px rgba(16,40,34,.22);--dot:rgba(16,40,34,.07);
+ --radius:20px;--radius-sm:14px;
  --t-em:#0F766E;--t-sky:#0369A1;--t-amb:#B45309;--t-vio:#6D28D9;--t-rose:#BE123C;
  --em-bg:rgba(20,184,166,.12);--sky-bg:rgba(14,165,233,.12);--amb-bg:rgba(245,158,11,.14);--vio-bg:rgba(139,92,246,.13);--rose-bg:rgba(244,63,94,.12);
  --grad:linear-gradient(135deg,#14B8A6,#0EA5A4);
@@ -1383,7 +1529,13 @@ const CSS=`
  --paper:#080B0A;--surf:#101715;--surf2:#0E1413;--ink:#F3F7F5;--ink2:#C3D0CB;--mut:#8A9A92;--line:rgba(255,255,255,.08);
  --teal:#2DD4BF;--tealD:#7DE9D8;--tealT:rgba(45,212,191,.13);
  --amber:#FBBF24;--amberT:rgba(251,191,36,.14);--green:#34D399;--greenT:rgba(52,211,153,.13);--red:#FB7185;--redT:rgba(251,113,133,.13);
- --emerald:#2DD4BF;--sky:#38BDF8;--violet:#A78BFA;--rose:#FB7185;
+ --emerald:#2DD4BF;--emerald2:#34D399;--sky:#38BDF8;--amber2:#FBBF24;--violet:#A78BFA;--rose:#FB7185;
+ --card:#101715;--card2:#0E1413;--line2:rgba(255,255,255,.12);--text:#F3F7F5;--muted:#8A9A92;--subtext:#C3D0CB;
+ --soft:rgba(255,255,255,.02);--soft2:rgba(255,255,255,.04);--soft3:rgba(255,255,255,.08);--track:rgba(255,255,255,.07);
+ --header-bg:rgba(8,11,10,.55);--accent-strong:#34D399;--noise:.035;--gi-op:.10;--mcta-bg:linear-gradient(0deg,rgba(8,11,10,.96),rgba(8,11,10,.6));
+ --frame:linear-gradient(135deg,rgba(52,211,153,.7),rgba(56,189,248,.45) 45%,rgba(167,139,250,.7));
+ --inner-hl:inset 0 1px 0 rgba(255,255,255,.06);--shadow-card:0 16px 38px -26px rgba(0,0,0,.78);--dot:rgba(255,255,255,.06);
+ --radius:20px;--radius-sm:14px;
  --t-em:#7DE9D8;--t-sky:#9AD7F8;--t-amb:#FBD37A;--t-vio:#C7B5FB;--t-rose:#FDA4AF;
  --em-bg:rgba(45,212,191,.13);--sky-bg:rgba(56,189,248,.13);--amb-bg:rgba(251,191,36,.14);--vio-bg:rgba(167,139,250,.15);--rose-bg:rgba(251,113,133,.14);
  --grad:linear-gradient(135deg,#34D399,#14B8A6);
@@ -1791,4 +1943,173 @@ html,body{margin:0;padding:0;}
 .cc.dark .cc-stat,.cc.dark .cc-tcard,.cc.dark .cc-act,.cc.dark .cc-acc-i,.cc.dark .cc-card,.cc.dark .cc-apanel,.cc.dark .cc-task{box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.05);}
 .cc-hero::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--emerald),var(--sky),var(--violet));opacity:.5;z-index:1;}
 @media (prefers-reduced-motion: reduce){ .cc *,.cc *::before,.cc *::after{animation:none!important;transition:none!important;} }
+
+/* ============================================================
+   v4 — ЖИВОЙ премиум-редизайн главной (scoped под .ccx)
+   ============================================================ */
+.cc-main.ccx{position:relative;z-index:1;max-width:1180px;}
+
+/* живой фон: плавающие иконки + аврора + зерно */
+.cc-scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.cc-scene::after{content:"";position:absolute;inset:0;background:radial-gradient(500px 360px at 20% 18%,rgba(45,212,191,.10),transparent 60%),radial-gradient(520px 380px at 82% 30%,rgba(167,139,250,.09),transparent 60%);filter:blur(8px);animation:ccaurora 20s ease-in-out infinite;}
+.cc-scene::before{content:"";position:absolute;inset:0;opacity:var(--noise);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.cc-fi{position:absolute;}
+.cc-fi svg{width:100%;height:100%;stroke-width:1.6;}
+@keyframes ccaurora{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(2.5%,1.8%) scale(1.04);}}
+@keyframes flA{0%,100%{transform:translateY(0) rotate(-6deg);}50%{transform:translateY(-26px) rotate(6deg);}}
+@keyframes flB{0%,100%{transform:translate(0,0) rotate(5deg);}50%{transform:translate(-18px,-20px) rotate(-6deg);}}
+@keyframes flC{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(22px) scale(1.08);}}
+
+/* градиентная рамка */
+.ccx .frame{position:relative;}
+.ccx .frame::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:var(--frame);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;pointer-events:none;z-index:1;}
+
+/* hero */
+.ccx .hero{margin-top:4px;border-radius:var(--radius);overflow:hidden;position:relative;background:var(--hero-bg);box-shadow:var(--inner-hl),var(--shadow-card);padding:42px 44px;display:grid;grid-template-columns:1fr auto;gap:34px;align-items:center;transition:background .35s ease;}
+.ccx .hero::after{content:"";position:absolute;right:-40px;bottom:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(167,139,250,.18),transparent 65%);pointer-events:none;}
+.ccx .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-strong);margin-bottom:16px;}
+.ccx .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--emerald2);box-shadow:0 0 10px var(--emerald2);}
+.ccx .hero h2{font-family:'Unbounded',sans-serif;font-size:clamp(28px,4.2vw,48px);font-weight:800;line-height:1.04;letter-spacing:-1.5px;margin-bottom:16px;}
+.ccx .hero h2 .grad{background:linear-gradient(100deg,#34D399,#38BDF8 60%,#A78BFA);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.ccx .hero p{font-size:16px;line-height:1.6;color:var(--subtext);max-width:560px;margin-bottom:22px;}
+.ccx .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.ccx .chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--soft2);color:var(--text);}
+.ccx .chip.amb{color:var(--t-amb);background:rgba(251,191,36,.12);}
+.ccx .chip.em{color:var(--t-em);background:rgba(45,212,191,.12);}
+.ccx .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.ccx .btn{font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;border-radius:13px;padding:14px 24px;display:inline-flex;align-items:center;gap:9px;transition:.22s;color:var(--text);}
+.ccx .btn-primary{background:linear-gradient(135deg,#34D399,#14B8A6);color:#04201c;box-shadow:0 12px 30px -8px rgba(45,212,191,.65);}
+.ccx .btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(45,212,191,.8);}
+.ccx .btn-ghost{background:var(--soft2);color:var(--text);border:1px solid var(--line2);}
+.ccx .btn-ghost:hover{background:var(--soft3);}
+.ccx .quick{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px;}
+.ccx .q-label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
+.ccx .tag{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--subtext);padding:3px 2px;cursor:pointer;transition:.2s;border-bottom:1.5px solid transparent;}
+.ccx .tag .d{width:8px;height:8px;border-radius:50%;}
+.ccx .tag:hover{color:var(--text);border-bottom-color:var(--line2);}
+
+/* ring */
+.ccx .ring-card{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;}
+.ccx .ring-card::before{content:"";position:absolute;top:-14px;width:210px;height:210px;border-radius:50%;
+  background:radial-gradient(closest-side,var(--dot) 1px,transparent 1.4px) 0 0/16px 16px;
+  -webkit-mask:radial-gradient(closest-side,#000 60%,transparent 78%);mask:radial-gradient(closest-side,#000 60%,transparent 78%);opacity:.7;pointer-events:none;}
+.ccx .ring{position:relative;width:170px;height:170px;z-index:1;}
+.ccx .ring svg{transform:rotate(-90deg);width:100%;height:100%;display:block;}
+.ccx .rtrack{stroke:var(--track);}
+.ccx #ccringp{filter:drop-shadow(0 0 7px rgba(52,211,153,.55));transition:stroke-dashoffset .2s linear;}
+.ccx .ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.ccx .ring .pct b{font-family:'Unbounded',sans-serif;font-size:38px;font-weight:800;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;transform:translateY(.1em);}
+.ccx .ring .pct small{position:absolute;top:62%;left:0;right:0;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.05em;}
+.ccx .streak{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--t-amb);font-weight:700;margin-top:12px;}
+.ccx .goal{width:180px;margin-top:6px;}
+.ccx .goal .gl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:5px;letter-spacing:.04em;}
+.ccx .goal .gt{height:6px;border-radius:99px;background:var(--track);overflow:hidden;}
+.ccx .goal .gt i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#34D399,#38BDF8);transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+
+/* AI spotlight */
+.ccx .ai{position:relative;overflow:hidden;margin-top:18px;border-radius:var(--radius);padding:22px 26px;display:flex;align-items:center;gap:20px;cursor:pointer;background:linear-gradient(135deg,rgba(52,211,153,.16),rgba(56,189,248,.10) 70%);box-shadow:var(--inner-hl),var(--shadow-card);transition:transform .22s;}
+.ccx .ai:hover{transform:translateY(-3px);}
+.ccx .ai::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.16) 50%,transparent 68%);transform:translateX(-130%);}
+.ccx .ai:hover::before{animation:ccsweep 1.1s ease;}
+@keyframes ccsweep{to{transform:translateX(130%);}}
+.ccx .ai .aic{width:54px;height:54px;flex-shrink:0;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#34D399,#0EA5A4);box-shadow:0 10px 30px -8px rgba(45,212,191,.7);color:#04201c;}
+.ccx .ai .atxt{flex:1;min-width:0;}
+.ccx .ai h4{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;color:var(--text);}
+.ccx .ai p{font-size:13.5px;color:var(--subtext);line-height:1.45;}
+.ccx .ai .ago{flex-shrink:0;}
+
+/* sections */
+.ccx .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:38px 4px 16px;}
+.ccx .sec-head h3{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;color:var(--text);}
+
+/* stats */
+.ccx .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.ccx .stat{position:relative;border-radius:var(--radius-sm);padding:18px 18px 16px;background:var(--card);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;transition:.22s;}
+.ccx .stat:hover{transform:translateY(-3px);border-color:var(--line2);}
+.ccx .stat-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.ccx .stat .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;}
+.ccx .stat b{font-family:'Unbounded',sans-serif;font-size:30px;font-weight:800;display:block;line-height:1;letter-spacing:-1px;color:var(--text);font-variant-numeric:tabular-nums;}
+.ccx .stat span{font-size:13px;color:var(--muted);font-weight:500;}
+.ccx .stat .bar{height:5px;border-radius:99px;background:var(--track);margin-top:13px;overflow:hidden;}
+.ccx .stat .bar i{display:block;height:100%;border-radius:99px;width:0;transition:width 1.1s cubic-bezier(.4,0,.2,1);}
+.ccx .glow-em{box-shadow:var(--inner-hl),var(--shadow-card),inset 0 0 0 1px rgba(45,212,191,.18),0 0 40px -22px var(--emerald);}
+.ccx .e-em{background:rgba(45,212,191,.13);color:var(--t-em);} .ccx .f-em{background:linear-gradient(90deg,#34D399,#2DD4BF);}
+.ccx .e-sky{background:rgba(56,189,248,.13);color:var(--t-sky);} .ccx .f-sky{background:linear-gradient(90deg,#38BDF8,#0EA5E9);}
+.ccx .e-amb{background:rgba(251,191,36,.14);color:var(--t-amb);} .ccx .f-amb{background:linear-gradient(90deg,#FBBF24,#F59E0B);}
+.ccx .e-vio{background:rgba(167,139,250,.15);color:var(--t-vio);} .ccx .f-vio{background:linear-gradient(90deg,#A78BFA,#8B5CF6);}
+
+/* weekly sparkline */
+.ccx .spark{margin-top:14px;border-radius:var(--radius-sm);padding:16px 18px;background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);}
+.ccx .spark .sh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.ccx .spark .sh b{font-size:13px;font-weight:700;color:var(--text);}
+.ccx .spark .sh span{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--t-em);font-weight:700;}
+.ccx .bars{display:flex;align-items:flex-end;gap:10px;height:56px;}
+.ccx .bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.ccx .bars .bk{width:100%;max-width:26px;height:44px;border-radius:7px;background:var(--track);display:flex;align-items:flex-end;overflow:hidden;}
+.ccx .bars .bk i{display:block;width:100%;height:0;border-radius:7px;background:linear-gradient(180deg,#34D399,#2DD4BF);transition:height 1s cubic-bezier(.4,0,.2,1);}
+.ccx .bars .col.hot .bk i{background:linear-gradient(180deg,#FBBF24,#F59E0B);}
+.ccx .bars .dl{font-size:10.5px;color:var(--muted);font-weight:600;}
+
+/* topic modules */
+.ccx .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.ccx .mod{position:relative;border-radius:var(--radius);padding:24px;background:var(--card);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;cursor:pointer;transition:.25s;}
+.ccx .mod::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;}
+.ccx .mod:hover{transform:translateY(-4px);border-color:var(--line2);}
+.ccx .mod.em::before{background:var(--emerald);} .ccx .mod.em:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(45,212,191,.5);}
+.ccx .mod.sky::before{background:var(--sky);} .ccx .mod.sky:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(56,189,248,.5);}
+.ccx .mod.amb::before{background:var(--amber2);} .ccx .mod.amb:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(251,191,36,.45);}
+.ccx .mod.vio::before{background:var(--violet);} .ccx .mod.vio:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(167,139,250,.5);}
+.ccx .mod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.ccx .badge{font-family:'Manrope',sans-serif;font-size:12px;font-weight:800;letter-spacing:.04em;padding:5px 11px;border-radius:8px;}
+.ccx .b-em{background:rgba(45,212,191,.14);color:var(--t-em);} .ccx .b-sky{background:rgba(56,189,248,.14);color:var(--t-sky);}
+.ccx .b-amb{background:rgba(251,191,36,.16);color:var(--t-amb);} .ccx .b-vio{background:rgba(167,139,250,.16);color:var(--t-vio);}
+.ccx .mod h4{font-family:'Unbounded',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.4px;margin-bottom:7px;color:var(--text);}
+.ccx .mod .meta{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:18px;}
+.ccx .pwrap{display:flex;align-items:center;gap:12px;margin-bottom:9px;}
+.ccx .pbar{flex:1;height:7px;border-radius:99px;background:var(--track);overflow:hidden;}
+.ccx .pbar i{display:block;height:100%;border-radius:99px;width:0;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+.ccx .pval{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);min-width:34px;text-align:right;}
+.ccx .mod-foot{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--muted);font-weight:600;}
+.ccx .mod-foot .ok{display:inline-flex;align-items:center;gap:5px;color:var(--t-em);}
+.ccx .mod-foot .warn{color:var(--t-amb);}
+.ccx .arrow{width:40px;height:40px;border-radius:12px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--text);transition:.2s;}
+.ccx .mod:hover .arrow{background:var(--soft3);transform:translateX(3px);}
+
+/* wide action cards */
+.ccx .two{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px;}
+.ccx .wide{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:var(--radius);background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);cursor:pointer;transition:.22s;}
+.ccx .wide:hover{transform:translateY(-3px);border-color:var(--line2);}
+.ccx .wide .wic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;flex-shrink:0;}
+.ccx .wide h4{font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px;color:var(--text);}
+.ccx .wide p{font-size:13px;color:var(--muted);line-height:1.4;}
+.ccx .wide .wgo{margin-left:auto;color:var(--muted);display:flex;} .ccx .wide:hover .wgo{color:var(--text);}
+
+/* mobile sticky CTA */
+.cc-mcta{display:none;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--mcta-bg);border-top:1px solid var(--line);backdrop-filter:blur(10px);}
+.cc-mcta .btn{width:100%;justify-content:center;font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;border-radius:13px;padding:14px 24px;display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#34D399,#14B8A6);color:#04201c;box-shadow:0 12px 30px -8px rgba(45,212,191,.65);}
+
+/* reveal-in */
+.ccx .reveal{opacity:0;transform:translateY(18px);animation:ccup .6s forwards;}
+@keyframes ccup{to{opacity:1;transform:none;}}
+
+@media (prefers-reduced-motion: reduce){
+  .cc-fi{animation:none!important;}
+  .cc-scene::after{animation:none!important;}
+  .ccx .reveal{opacity:1;transform:none;animation:none;}
+}
+
+@media(max-width:760px){
+  .cc-main.ccx{padding-left:16px;padding-right:16px;}
+  .ccx .hero{grid-template-columns:1fr;padding:30px 22px;gap:26px;}
+  .ccx .ring-card{order:-1;align-self:start;}
+  .ccx .ring{width:128px;height:128px;} .ccx .ring .pct b{font-size:28px;}
+  .ccx .goal{width:150px;}
+  .ccx .stats{grid-template-columns:repeat(2,1fr);}
+  .ccx .grid,.ccx .two{grid-template-columns:1fr;}
+  .ccx .ai{flex-wrap:wrap;} .ccx .ai .ago{width:100%;} .ccx .ai .ago .btn{width:100%;justify-content:center;}
+  .cc-mcta{display:block;}
+  .cc-fi{opacity:.10!important;}
+}
 `;
