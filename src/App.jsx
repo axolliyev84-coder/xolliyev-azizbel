@@ -4,8 +4,7 @@ import {
   Check, X, RotateCcw, ArrowRight, ArrowLeft, RefreshCw, Loader2, Home,
   Lightbulb, AlertTriangle, ChevronDown, Eye, EyeOff, Trophy, Target,
   FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
-  Sun, Moon, LogIn, LogOut, Gauge, Flame, Star, PieChart, DollarSign, BarChart3,
-  Landmark, Scale, Coins, Percent, Receipt, TrendingUp, Building2, Trash2
+  Sun, Moon, LogIn, LogOut, Flame, Coins, Scale, Landmark, Percent, TrendingUp, Building2, Receipt, Trash2
 } from "lucide-react";
 
 /* ===================== STORAGE (localStorage) ===================== */
@@ -43,26 +42,6 @@ function fmtTime(ts){ if(!ts) return "—"; const d=new Date(ts), now=new Date()
   if(d.toDateString()===now.toDateString()) return "сегодня, "+hm;
   const y=new Date(now); y.setDate(now.getDate()-1); if(d.toDateString()===y.toDateString()) return "вчера, "+hm;
   return d.getDate().toString().padStart(2,"0")+"."+(d.getMonth()+1).toString().padStart(2,"0")+", "+hm; }
-
-/* ===================== ACTIVITY (реальная геймификация: серия дней, цель, неделя) ===================== */
-const AKEY = "mscfo_act_v1";       // { "2026-06-19": 3, ... } — учебных действий за день
-const DAY_GOAL = 5;                 // цель: 5 учебных действий в день
-function actGet(){ try{ return JSON.parse(localStorage.getItem(AKEY)||"{}")||{}; }catch{ return {}; } }
-function dayKey(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-function recordActivity(){ try{ const m=actGet(); const k=dayKey(); m[k]=(m[k]||0)+1; localStorage.setItem(AKEY,JSON.stringify(m)); }catch{} }
-function todayCount(){ return actGet()[dayKey()]||0; }
-function getStreak(){ const m=actGet(); let s=0; const d=new Date();
-  if(!(m[dayKey(d)]>0)) d.setDate(d.getDate()-1);           // сегодня ещё нет активности → считаем со вчера
-  while(m[dayKey(d)]>0){ s++; d.setDate(d.getDate()-1); }
-  return s; }
-function getWeek(){ const m=actGet(); const L=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"]; const out=[]; const t=new Date();
-  for(let i=6;i>=0;i--){ const d=new Date(t); d.setDate(t.getDate()-i); out.push({label:L[d.getDay()],count:m[dayKey(d)]||0,today:i===0}); }
-  return out; }
-function weekDelta(){ const m=actGet(); const t=new Date(); let cur=0,prev=0;
-  for(let i=0;i<7;i++){ const d=new Date(t); d.setDate(t.getDate()-i); cur+=m[dayKey(d)]||0; }
-  for(let i=7;i<14;i++){ const d=new Date(t); d.setDate(t.getDate()-i); prev+=m[dayKey(d)]||0; }
-  if(prev<=0) return null;
-  return Math.round((cur-prev)/prev*100); }
 
 /* ===================== CONTENT (из материалов студента) ===================== */
 const SRC = "Курс «Сертифицированный главный бухгалтер» (АВСО) — ваши конспекты, тесты, Excel и решения";
@@ -135,9 +114,9 @@ const CONCEPT = {
       options:["Понятность","Своевременность","Проверяемость","Уместность"], correct:2, explain:"Это проверяемость." },
     { type:"mcq", q:"Основное бухгалтерское уравнение:",
       options:["Активы + Обязательства = Капитал","Активы = Обязательства − Капитал","Активы − Обязательства = Капитал","Капитал = Доходы − Активы"], correct:2, explain:"Активы − Обязательства = Капитал." },
-    { type:"open", q:"Почему уплаченную зарплату относят к расходам? Свяжите с определением.",
-      sample:"Зарплата уменьшает активы (деньги) и приводит к снижению капитала, при этом не является распределением в пользу собственников — значит, по определению это расход.",
-      explain:"Расход = снижение активов/рост обязательств → снижение капитала (не дивиденды)." },
+    { type:"mcq", q:"Почему выплаченная зарплата признаётся расходом?",
+      options:["Она увеличивает обязательства перед банком", "Она уменьшает активы (деньги) и снижает капитал, не являясь выплатой собственникам", "Это распределение прибыли в пользу собственников", "Она увеличивает капитал компании"], correct:1,
+      explain:"Расход = уменьшение активов / рост обязательств → снижение капитала, не связанное с выплатами собственникам." },
     { type:"mcq", q:"Предприятие получило предоплату 10 000 за услуги, которые окажет в следующем году. На дату получения это:",
       options:["Доход","Обязательство перед клиентом","Капитал","Расход"], correct:1,
       explain:"Деньги получены, но услуга ещё не оказана → возникает обязанность её оказать = обязательство. Доход признаётся позже, по мере оказания услуги." },
@@ -225,9 +204,9 @@ const IAS1 = {
       options:["налог","дивиденды","проценты","амортизация"], correct:1, explain:"Минус дивиденды (выплаченные и объявленные)." },
     { type:"mcq", q:"Чистая прибыль равна:",
       options:["Валовая − Сбыт","Прибыль до налога − Налог","Выручка − Себестоимость","Прибыль от операций − Дивиденды"], correct:1, explain:"Прибыль до налога − Налог." },
-    { type:"open", q:"Где в отчётности окажется выручка 22 100 и почему не на балансе?",
-      sample:"Выручка — это доход за период, она попадает в Отчёт о совокупном доходе (ОСД). На баланс (ОФП) попадает только итог — чистая прибыль через нераспределённую прибыль в капитале.",
-      explain:"Доходы/расходы — в ОСД; их итог переносится в капитал баланса." },
+    { type:"mcq", q:"Где отражается выручка (например, 22 100) и почему её нет прямо в балансе?",
+      options:["В балансе (ОФП) как актив", "В Отчёте о совокупном доходе (ОСД); в баланс через капитал попадает только итог", "В Отчёте о движении денежных средств как финансовая деятельность", "В примечаниях; в отчётность не входит"], correct:1,
+      explain:"Доходы и расходы показываются в ОСД; их итог (прибыль) переносится в капитал баланса." },
     { type:"mcq", q:"Выручка 50 000, себестоимость 30 000, адм. расходы 6 000, расходы на сбыт 4 000, проценты к уплате 2 000, налог 1 600. Чистая прибыль за период =",
       options:["10 000","8 000","6 400","20 000"], correct:2,
       explain:"Валовая 50 000−30 000=20 000; минус адм. 6 000 и сбыт 4 000 = 10 000; минус проценты 2 000 = 8 000 (до налога); минус налог 1 600 = 6 400." },
@@ -342,12 +321,12 @@ const IAS2 = {
     { type:"mcq", q:"ЧСР рассчитывается как:",
       options:["цена продажи + затраты на продажу","цена продажи − затраты на завершение − затраты на продажу","себестоимость − амортизация","цена покупки − скидки"], correct:1,
       explain:"ЧСР = цена продажи − затраты на завершение − затраты на продажу." },
-    { type:"open", q:"Себестоимость товара £5 000, но чтобы продать, нужно доработать за £2 000, а продать удастся за £6 500. По какой сумме показать запас и почему?",
-      sample:"ЧСР = 6 500 − 2 000 = 4 500. Поскольку ЧСР (4 500) ниже себестоимости (5 000), запас показывают по меньшему — 4 500. Убыток 500.",
-      explain:"Правило: меньшее из себестоимости и ЧСР." },
-    { type:"open", q:"При росте закупочных цен какой метод (ФИФО или средневзвешенная) даст бо́льшую прибыль и почему?",
-      sample:"ФИФО. При росте цен по ФИФО списывается более дешёвое старое поступление (ниже себестоимость продаж), а на складе остаётся дорогое новое — поэтому прибыль и оценка остатка выше.",
-      explain:"ФИФО при росте цен → ниже COGS → выше прибыль." },
+    { type:"mcq", q:"Себестоимость товара £5 000; для продажи нужна доработка £2 000, цена продажи £6 500. По какой сумме показать запас?",
+      options:["5 000 (по себестоимости)", "6 500 (по цене продажи)", "4 500 (по ЧСР: 6 500 − 2 000)", "2 000 (затраты на доработку)"], correct:2,
+      explain:"ЧСР = 6 500 − 2 000 = 4 500 < себестоимости 5 000 → запас по меньшему = 4 500." },
+    { type:"mcq", q:"При росте закупочных цен какой метод оценки запасов даёт бо́льшую прибыль?",
+      options:["Средневзвешенная", "ФИФО (FIFO)", "ЛИФО (LIFO)", "Метод не влияет на прибыль"], correct:1,
+      explain:"При росте цен ФИФО списывает более дешёвые ранние поступления → ниже себестоимость продаж → выше прибыль." },
     { type:"mcq", q:"Себестоимость единицы 120. Чтобы продать, нужна доработка 30 и доставка покупателю 10; цена продажи 140. По какой стоимости отразить запас?",
       options:["120","140","100","110"], correct:2,
       explain:"ЧСР = 140 − 30 − 10 = 100. ЧСР (100) ниже себестоимости (120) → запас по меньшему = 100; убыток 20." },
@@ -401,6 +380,42 @@ const IAS16 = {
       {k:"p", v:"При отсрочке платежа ОС признаётся по дисконтированной стоимости; разница = проценты. По IAS 23 проценты капитализируют только для квалифицируемого актива."},
       {k:"p", v:"Капитализация прекращается, когда актив доставлен и пригоден к эксплуатации; дальнейшая передислокация → расходы периода."}
     ]},
+    { n:6, title:"Приобретение в кредит: квалифицированный актив", blocks:[
+      {k:"def", term:"Квалифицированный актив", v:"актив, который обязательно требует существенного промежутка времени для подготовки его к использованию по назначению или к реализации."},
+      {k:"p", v:"Если ОС приобретается или строится в кредит, проценты по займам (IAS 23) могут капитализироваться — включаться в стоимость такого актива."},
+      {k:"p", v:"Капитализацию процентов СЛЕДУЕТ НАЧИНАТЬ, когда одновременно выполнены условия:"},
+      {k:"ul", v:["произведены капитальные вложения в актив;", "понесены затраты по займам;", "продолжается работа по подготовке актива к использованию или продаже."]},
+      {k:"p", v:"Капитализацию СЛЕДУЕТ ПРЕКРАЩАТЬ, когда завершена основная часть деятельности, необходимой для подготовки актива к его предполагаемому использованию или продаже."},
+      {k:"note", v:"Пока актив готовится — проценты идут в его стоимость; как только готов к использованию — дальнейшие проценты признаются расходом."}
+    ]},
+    { n:7, title:"Активы собственного производства", blocks:[
+      {k:"p", v:"Первоначальная стоимость ОС, построенного собственными силами, определяется на основе включения:"},
+      {k:"ul", v:["всех прямых затрат на материалы, рабочую силу и т.д.;", "накладных затрат, если они имеют непосредственное отношение к строительству;", "процентов по кредиту (IAS 23);", "затрат на ликвидацию актива и восстановление территории."]},
+      {k:"note", v:"Принцип тот же, что и при покупке: в стоимость входит всё, что необходимо, чтобы довести актив до рабочего состояния."}
+    ]},
+    { n:8, title:"Что НЕ включается в первоначальную стоимость", blocks:[
+      {k:"p", v:"НЕ являются элементами фактической стоимости основных средств:"},
+      {k:"ul", v:["административные и другие общие накладные расходы, если они не относятся непосредственно к приобретению актива или доведению его до рабочего состояния;", "расходы по вводу в эксплуатацию, если они не являются необходимыми для приведения актива в рабочее состояние."]},
+      {k:"warn", v:"Первичные операционные убытки, понесённые до достижения плановых показателей эксплуатации ОС, признаются как РАСХОД (не капитализируются)."}
+    ]},
+    { n:9, title:"Последующая оценка: две модели", blocks:[
+      {k:"p", v:"После признания основное средство учитывается по одной из двух моделей (выбирается как учётная политика для всего класса ОС):"},
+      {k:"def", term:"Модель по первоначальной стоимости", v:"актив отражается по фактической (исторической) стоимости за вычетом накопленного износа и убытков от обесценения."},
+      {k:"formula", v:"БС = ПС − НИ − Обесценение"},
+      {k:"def", term:"Модель по переоцененной стоимости", v:"актив отражается по справедливой стоимости (СС) на дату переоценки за вычетом последующего накопленного износа."},
+      {k:"p", v:"Обозначения:"},
+      {k:"ul", v:["ПС — первоначальная стоимость;", "НИ — накопленный износ;", "Обесценение (ЗО) — убыток от обесценения;", "БС — балансовая (остаточная) стоимость;", "СС — справедливая стоимость;", "СПС — срок полезной службы."]}
+    ]},
+    { n:10, title:"Переоценка ОС: два метода", blocks:[
+      {k:"p", v:"При модели переоценки балансовую стоимость доводят до справедливой (СС). Технически это делают одним из двух методов:"},
+      {k:"def", term:"1) Пропорциональный метод", v:"и первоначальная стоимость, и накопленный износ умножаются на коэффициент переоценки."},
+      {k:"formula", v:"Коэффициент переоценки = СС / БС"},
+      {k:"def", term:"2) Метод списания износа", v:"накопленный износ списывается полностью, а валовая (первоначальная) стоимость доводится до СС."},
+      {k:"formula", v:"Δ (в резерв переоценки) = СС − БС"},
+      {k:"p", v:"Результат переоценки:"},
+      {k:"ul", v:["ДООЦЕНКА (СС > БС) → кредит «Резерв переоценки» (счёт 8510), через прочий совокупный доход (капитал);", "УЦЕНКА (СС < БС) → расход периода, если по этому активу нет ранее созданного резерва переоценки."]},
+      {k:"note", v:"Счета: 0120 — ОС, 0220 — накопленный износ, 8510 — резерв переоценки. Оба метода дают одинаковую балансовую стоимость = СС."}
+    ]},
   ],
   cards:[
     ["ОС — это…","материальные активы для производства/аренды/администрации, служат дольше одного периода."],
@@ -413,6 +428,18 @@ const IAS16 = {
     ["Демонтаж включается по какой стоимости?","По приведённой (дисконтированной)."],
     ["IAS 23: когда капитализировать проценты?","Только для квалифицируемого актива."],
     ["Когда прекращается капитализация?","Когда актив доставлен и пригоден к эксплуатации."],
+    ["Квалифицированный актив — это…", "актив, который обязательно требует существенного промежутка времени для подготовки к использованию по назначению или реализации."],
+    ["Когда НАЧИНАТЬ капитализацию процентов?", "когда: произведены капитальные вложения; понесены затраты по займам; продолжается работа по подготовке актива."],
+    ["Когда ПРЕКРАЩАТЬ капитализацию процентов?", "когда завершена основная часть деятельности по подготовке актива к использованию или продаже."],
+    ["Активы собственного производства: что входит в стоимость?", "прямые затраты (материалы, труд); накладные, связанные со строительством; проценты по кредиту (IAS 23); затраты на ликвидацию и восстановление территории."],
+    ["Входят ли админ. и общие накладные расходы в стоимость ОС?", "Нет, если они не относятся напрямую к приобретению или доведению актива до рабочего состояния."],
+    ["Расходы по вводу в эксплуатацию — когда НЕ входят?", "если они не являются необходимыми для приведения актива в рабочее состояние."],
+    ["Первичные операционные убытки до выхода на мощность?", "признаются как расход; в стоимость ОС не включаются."],
+    ["Две модели последующей оценки ОС?", "по первоначальной (фактической) стоимости и по переоцененной стоимости."],
+    ["Балансовая стоимость ОС = ?", "ПС − накопленный износ − обесценение."],
+    ["Коэффициент переоценки (пропорциональный метод) = ?", "СС / БС (справедливая стоимость ÷ балансовая)."],
+    ["Метод списания износа — суть?", "накопленный износ списывается, валовая стоимость доводится до СС; разница СС−БС идёт в резерв переоценки."],
+    ["Дооценка и уценка — куда относятся?", "дооценка → резерв переоценки (счёт 8510, капитал); уценка → расход, если нет резерва по активу."],
   ],
   examples:[
     { title:"Задача 1. Здание + лифты",
@@ -427,6 +454,14 @@ const IAS16 = {
       problem:"Цена 1 200 000 тугр. (курс 4,60); пошлины 2% от $; транспорт $2 723; обслуживание 2 года 100 000 тугр.; монтаж/тест $6 400 (− тест-продукция $500); продвижение $12 500; обучение $4 800. Стоимость для ОФП?",
       steps:[["Покупная цена","1 200 000/4,60 = $260 870."],["Пошлины","2% × 260 870 = $5 217."],["Транспорт","$2 723."],["Монтаж/тест","6 400 − 500 = $5 900."],["НЕ включаем","обслуживание, продвижение, обучение."],["Итог","260 870 + 5 217 + 2 723 + 5 900 = $274 710."]],
       answer:"Стоимость ≈ $274 710." },
+    { title:"Пример. Переоценка ОС (ПС 10 000, СПС 10 лет, СС 10 800)",
+      problem:"Объект ОС: первоначальная стоимость 10 000, срок полезной службы 10 лет. Через год справедливая стоимость составила 10 800. Отразите переоценку двумя методами.",
+      steps:[["Накопленный износ (НИ)", "10 000 / 10 = 1 000."], ["Балансовая стоимость (БС)", "10 000 − 1 000 = 9 000."], ["Дооценка Δ", "СС − БС = 10 800 − 9 000 = 1 800."], ["Метод 1 — коэффициент", "k = СС/БС = 10 800/9 000 = 1,2."], ["ПС и НИ после переоценки", "ПС: 10 000×1,2 = 12 000 (+2 000); НИ: 1 000×1,2 = 1 200 (+200)."], ["Проводки (пропорциональный)", "ДТ ОС 2 000 / КТ Резерв 8510 — 2 000; ДТ Резерв 8510 200 / КТ НИ — 200. Итог в резерв = 1 800."], ["Метод 2 — списание износа", "ДТ ОС 800, ДТ НИ 1 000, КТ Резерв 8510 — 1 800 (валовая 10 000→10 800, износ обнуляется)."], ["Проверка", "БС = 10 800 = СС обоими методами."]],
+      answer:"Дооценка 1 800 → резерв переоценки. Балансовая стоимость после переоценки = 10 800 (СС) при любом методе." },
+    { title:"Пример. Переоценка ОС (ПС 20 000, СПС 5 лет, СС 17 600)",
+      problem:"Объект ОС: первоначальная стоимость 20 000, срок 5 лет. Через год справедливая стоимость 17 600. Отразите переоценку двумя методами.",
+      steps:[["НИ", "20 000 / 5 = 4 000."], ["БС", "20 000 − 4 000 = 16 000."], ["Дооценка Δ", "17 600 − 16 000 = 1 600."], ["Метод 1 — коэффициент", "k = 17 600/16 000 = 1,1."], ["ПС и НИ после", "ПС: 20 000×1,1 = 22 000 (+2 000); НИ: 4 000×1,1 = 4 400 (+400)."], ["Проводки (пропорциональный)", "ДТ ОС 2 000 / КТ Резерв 8510 — 2 000; ДТ Резерв 8510 400 / КТ НИ — 400. Итог в резерв = 1 600."], ["Метод 2 — списание износа", "ДТ НИ 4 000, КТ ОС 2 400, КТ Резерв 8510 — 1 600 (валовая 20 000→17 600, износ обнуляется)."], ["Проверка", "БС = 17 600 = СС обоими методами."]],
+      answer:"Дооценка 1 600 → резерв переоценки. БС = 17 600. Хотя СС ниже первоначальной стоимости, относительно балансовой это всё равно дооценка." },
   ],
   quiz:[
     { type:"mcq", q:"Какой признак НЕ обязателен для ОС?",
@@ -445,15 +480,42 @@ const IAS16 = {
       options:["Актив оплачен","Актив готов к эксплуатации","Начислена амортизация","Конец периода"], correct:1, explain:"Когда актив пригоден к эксплуатации." },
     { type:"mcq", q:"Здание 500 000 (50 лет), лифты 100 000 (10 лет). Амортизация в год:",
       options:["10 000","18 000","8 000","12 500"], correct:1, explain:"8 000 + 10 000 = 18 000." },
-    { type:"open", q:"Почему обучение персонала не входит в стоимость станка?",
-      sample:"Обучение не доводит сам актив до рабочего состояния — это затраты на персонал, расход периода. В стоимость ОС входят только прямые затраты на приобретение и доведение актива до готовности.",
-      explain:"В стоимость — только доведение актива до работы; обучение — расход." },
+    { type:"mcq", q:"Почему затраты на обучение персонала НЕ включаются в первоначальную стоимость станка?",
+      options:["Обучение всегда дешевле станка", "Обучение не доводит сам актив до рабочего состояния — это расход периода", "Обучение увеличивает срок службы станка", "Обучение капитализируется по IAS 23"], correct:1,
+      explain:"В стоимость ОС входят только затраты на доведение самого актива до рабочего состояния; обучение персонала — расход периода." },
     { type:"mcq", q:"ОС: первоначальная стоимость 100 000, ликвидационная 10 000, срок службы 5 лет, прямолинейный метод. Годовая амортизация =",
       options:["20 000","18 000","16 000","10 000"], correct:1,
       explain:"Амортизируемая стоимость = 100 000 − 10 000 = 90 000; делим на 5 лет = 18 000 в год." },
     { type:"mcq", q:"Какие затраты ВКЛЮЧАЮТСЯ в первоначальную стоимость ОС?",
       options:["Обучение персонала","Дисконтированные затраты на демонтаж и восстановление площадки","Реклама нового продукта","Сверхнормативные потери при монтаже"], correct:1,
       explain:"Приведённая (дисконтированная) оценка обязательства по демонтажу/восстановлению включается в стоимость ОС (IAS 16)." },
+    { type:"mcq", q:"Квалифицированный актив — это актив, который:",
+      options:["всегда стоит дороже 10 000", "обязательно требует существенного времени для подготовки к использованию или продаже", "никогда не амортизируется", "приобретается только в кредит"], correct:1,
+      explain:"Определение IAS 23: нужен существенный промежуток времени на подготовку." },
+    { type:"mcq", q:"Что НЕ включается в стоимость актива собственного производства?",
+      options:["прямые затраты на материалы и труд", "проценты по кредиту (IAS 23)", "административные общие накладные, не связанные со строительством", "затраты на восстановление территории"], correct:2,
+      explain:"Общие админ. расходы, не относящиеся напрямую к строительству, не капитализируются." },
+    { type:"mcq", q:"Первичные операционные убытки до достижения плановых показателей эксплуатации ОС:",
+      options:["включаются в стоимость ОС", "признаются как расход", "капитализируются как проценты", "увеличивают резерв переоценки"], correct:1,
+      explain:"Это расход периода, не часть стоимости ОС." },
+    { type:"mcq", q:"Балансовая стоимость по модели первоначальной стоимости равна:",
+      options:["ПС + накопленный износ", "ПС − накопленный износ − обесценение", "справедливой стоимости", "ПС × коэффициент переоценки"], correct:1,
+      explain:"БС = ПС − НИ − обесценение." },
+    { type:"mcq", q:"Коэффициент переоценки в пропорциональном методе:",
+      options:["БС / СС", "СС / БС", "СС − БС", "ПС / СПС"], correct:1,
+      explain:"k = СС / БС." },
+    { type:"mcq", q:"ПС=10 000, СПС=10 лет. Через год справедливая стоимость 10 800. Сумма дооценки в резерв переоценки:",
+      options:["800", "1 000", "1 800", "2 000"], correct:2,
+      explain:"НИ=1 000, БС=9 000, Δ = 10 800 − 9 000 = 1 800." },
+    { type:"mcq", q:"При методе списания износа разница, относимая в резерв переоценки, равна:",
+      options:["СС / БС", "СС − БС", "ПС − СС", "НИ × k"], correct:1,
+      explain:"Δ = СС − БС." },
+    { type:"mcq", q:"Справедливая стоимость НИЖЕ балансовой (уценка), резерва по активу нет. Разница:",
+      options:["игнорируется", "относится в резерв переоценки", "признаётся расходом периода", "добавляется к ПС"], correct:2,
+      explain:"Уценка без резерва → расход (П&У)." },
+    { type:"mcq", q:"Чем отличается пропорциональный метод от метода списания износа при переоценке?",
+      options:["Они дают разную балансовую стоимость", "Пропорциональный умножает ПС и износ на коэффициент; метод списания обнуляет износ и доводит валовую стоимость до СС (итог БС=СС одинаков)", "Пропорциональный применяется только при уценке", "Метод списания не затрагивает накопленный износ"], correct:1,
+      explain:"Оба метода дают одинаковую балансовую стоимость (БС=СС); различие только в технике отражения износа." },
   ],
   homeworks:[
     { id:"i16_hw1", kind:"classify", title:"Домашняя задача. Оборудование 2/10 n30",
@@ -471,6 +533,10 @@ const IAS16 = {
         { label:"Зарплата мастеров и начальника цеха", amount:12000, correct:"out", note:"Производственные накладные." },
       ],
       answerIn:458800, answerOut:27200 },
+    { id:"i16_hw2", kind:"solve", title:"Домашняя задача. Переоценка ОС (4 объекта)",
+      cond:"Для каждого объекта определите накопленный износ, балансовую стоимость и результат переоценки через год (дооценка/уценка), составьте проводки. Данные: 1) ПС 30 000, СПС 15 лет, СС 29 000; 2) ПС 25 000, СПС 5 лет, СС 22 000; 3) ПС 50 000, СПС 20 лет, СС 51 000; 4) ПС 60 000, СПС 10 лет, СС 53 000.",
+      steps:[["№1: ПС 30 000, СПС 15, СС 29 000", "НИ=2 000; БС=28 000; Δ=+1 000 — дооценка. Метод списания: ДТ НИ 2 000, КТ ОС 1 000, КТ Резерв 8510 — 1 000. (пропорц. k≈1,0357)"], ["№2: ПС 25 000, СПС 5, СС 22 000", "НИ=5 000; БС=20 000; Δ=+2 000 — дооценка. Метод списания: ДТ НИ 5 000, КТ ОС 3 000, КТ Резерв 8510 — 2 000. (пропорц. k=1,1: ПС→27 500, НИ→5 500)"], ["№3: ПС 50 000, СПС 20, СС 51 000", "НИ=2 500; БС=47 500; Δ=+3 500 — дооценка. Метод списания: ДТ ОС 1 000, ДТ НИ 2 500, КТ Резерв 8510 — 3 500. (пропорц. k≈1,0737)"], ["№4: ПС 60 000, СПС 10, СС 53 000", "НИ=6 000; БС=54 000; Δ=−1 000 — УЦЕНКА. Метод списания: ДТ НИ 6 000, ДТ Расход (убыток от переоценки) 1 000, КТ ОС 7 000. Уценка без резерва → расход."]],
+      answer:"№1 дооценка 1 000; №2 дооценка 2 000; №3 дооценка 3 500; №4 уценка 1 000 (в расход). Во всех случаях балансовая стоимость после переоценки = справедливой (СС)." },
   ],
 };
 
@@ -772,7 +838,7 @@ export default function App(){
   const visitSent = useRef(false);
   useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
   useEffect(()=>{ try{ const bg = theme==="dark" ? "#0B1310" : "#F7F6F1"; document.documentElement.style.background=bg; document.body.style.background=bg; document.body.style.margin="0"; }catch{} },[theme]);
-  useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
+  useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
   useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
   useEffect(()=>{ try{ var d=document.documentElement; d.style.backgroundColor = theme==="dark"?"#0B1310":"#F7F6F1"; d.style.colorScheme = theme==="dark"?"dark":"light"; }catch{} },[theme]);
 
@@ -782,7 +848,7 @@ export default function App(){
   function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
   function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
   function logout(){ visitSent.current=false; setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
-  function track(type,detail){ if(!user) return; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
+  function track(type,detail){ if(!user) return; const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
   const adminRoute = typeof window!=="undefined" && (/\/admin\/?$/.test(window.location.pathname) || window.location.hash==="#admin");
@@ -816,7 +882,7 @@ export default function App(){
     <div className={rootCls}>
       <header className="cc-top">
         <button className="cc-brand" onClick={()=>setView("home")}>
-          <span className="cc-brand-m"><TrendingUp size={19}/></span>
+          <span className="cc-brand-m"><Sparkles size={19}/></span>
           <span><span className="cc-brand-n">MCFO Kurs AI</span><span className="cc-brand-s">ИИ-репетитор · курс МСФО</span></span>
         </button>
         <div className="cc-top-r">
@@ -832,7 +898,7 @@ export default function App(){
         </div>
       </header>
 
-      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id,tabName)=>{setTopicId(id);setTab(tabName||"theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
+      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id)=>{setTopicId(id);setTab("theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
       {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")} track={track}/>}
       {view==="hw" && <HomeworkHub goHome={()=>setView("home")}/>}
       {view==="exam" && <ExamView prog={prog} save={save} track={track} goHome={()=>setView("home")}/>}
@@ -841,199 +907,53 @@ export default function App(){
 }
 
 /* ---------- HOME ---------- */
-const SCENE=[
-  {l:"4%",t:"14%",s:48,c:"--emerald2",o:.18,a:"flA 15s",d:"-2s",I:TrendingUp},
-  {l:"11%",t:"54%",s:42,c:"--sky",o:.16,a:"flB 19s",d:"-6s",I:BarChart3},
-  {l:"7%",t:"82%",s:40,c:"--amber2",o:.15,a:"flC 16s",d:"-3s",I:DollarSign},
-  {l:"21%",t:"30%",s:34,c:"--violet",o:.15,a:"flB 22s",d:"-9s",I:PieChart},
-  {l:"30%",t:"72%",s:38,c:"--emerald2",o:.15,a:"flA 18s",d:"-5s",I:FileText},
-  {l:"42%",t:"10%",s:34,c:"--sky",o:.15,a:"flC 20s",d:"-1s",I:Calculator},
-  {l:"50%",t:"46%",s:30,c:"--amber2",o:.13,a:"flB 17s",d:"-11s",I:Receipt},
-  {l:"60%",t:"78%",s:42,c:"--violet",o:.15,a:"flA 21s",d:"-4s",I:Scale},
-  {l:"69%",t:"20%",s:40,c:"--emerald2",o:.16,a:"flC 14s",d:"-7s",I:TrendingUp},
-  {l:"78%",t:"60%",s:36,c:"--sky",o:.15,a:"flB 23s",d:"-2.5s",I:Coins},
-  {l:"88%",t:"16%",s:42,c:"--amber2",o:.16,a:"flA 16s",d:"-8s",I:Landmark},
-  {l:"92%",t:"50%",s:34,c:"--violet",o:.15,a:"flC 19s",d:"-5.5s",I:Percent},
-  {l:"84%",t:"84%",s:38,c:"--emerald2",o:.15,a:"flB 15s",d:"-10s",I:TrendingUp},
-  {l:"36%",t:"90%",s:32,c:"--sky",o:.13,a:"flA 20s",d:"-3.5s",I:BarChart3},
-  {l:"54%",t:"26%",s:30,c:"--amber2",o:.13,a:"flC 18s",d:"-12s",I:Coins},
-  {l:"17%",t:"8%",s:30,c:"--violet",o:.13,a:"flB 21s",d:"-1.5s",I:Layers},
-];
-
 function HomeView({prog,tp,user,open,goHw,goExam}){
-  const ref=useRef(null);
-  const COL=["em","sky","amb","vio"];
-  const dl=n=>{const a=n%100,b=n%10; if(a>10&&a<20)return"дней"; if(b===1)return"день"; if(b>=2&&b<=4)return"дня"; return"дней";};
-
-  // ---- РЕАЛЬНЫЕ данные (никаких выдуманных чисел) ----
   const totalCards=TOPICS.reduce((s,t)=>s+t.cards.length,0);
   const knownCards=TOPICS.reduce((s,t)=>s+tp(t.id).cardsKnown.length,0);
   const avgQuiz=Math.round(TOPICS.reduce((s,t)=>s+tp(t.id).quizBest,0)/TOPICS.length);
-  const maxQuiz=Math.max(0,...TOPICS.map(t=>tp(t.id).quizBest));
-  const hwTotal=TOPICS.reduce((s,t)=>s+t.homeworks.length,0);
-  const hwDone=TOPICS.reduce((s,t)=>s+Object.keys(tp(t.id).hw||{}).length,0);
-  const topicsStarted=TOPICS.filter(t=>tp(t.id).cardsKnown.length>0||tp(t.id).quizBest>0).length;
-  const coursePct=totalCards?Math.round(knownCards/totalCards*100):0;
-  const CIRC=465;
-  const streak=getStreak();
-  const today=todayCount();
-  const goalPct=Math.min(Math.round(today/DAY_GOAL*100),100);
-  const week=getWeek();
-  const wkMax=Math.max(1,...week.map(d=>d.count));
-  let hotIdx=0; week.forEach((d,i)=>{ if(d.count>week[hotIdx].count) hotIdx=i; });
-  if(week[hotIdx].count===0) hotIdx=-1;
-  const delta=weekDelta();
-  const nextTopic=(TOPICS.find(t=>tp(t.id).cardsKnown.length<t.cards.length)||TOPICS[0]).id;
+  const hwCount=TOPICS.reduce((s,t)=>s+t.homeworks.length,0);
+  return(
+    <main className="cc-main">
+      <div className="cc-hero">
+        <div className="cc-hero-glow"/>
+        <div className="cc-hero-ic" aria-hidden="true"><Landmark size={62}/><Scale size={50}/><Coins size={44}/><Percent size={38}/></div>
+        <div className="cc-kick">{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
+        <h1 className="cc-h1">Что изучаем сегодня?</h1>
+        <p className="cc-lead">{SRC}. Выберите тему — внутри теория, карточки для зубрёжки, разобранные задачи, тесты и ИИ-репетитор.</p>
+        <div className="cc-hero-tags"><span><Receipt size={13}/> ОФП</span><span><TrendingUp size={13}/> ОСД</span><span><Building2 size={13}/> ОС</span><span><Coins size={13}/> Запасы</span></div>
+      </div>
 
-  const STAT=[
-    {c:"em", glow:true, I:<Layers size={19}/>,        num:knownCards,    suf:"", lab:"/"+totalCards+" карточек выучено", bar:coursePct},
-    {c:"amb",I:<Gauge size={19}/>,                     num:avgQuiz,       suf:"%",lab:"средний балл теста",            bar:avgQuiz},
-    {c:"sky",I:<ClipboardList size={19}/>,             num:hwDone,        suf:"", lab:"/"+hwTotal+" домашних сделано",   bar:hwTotal?Math.round(hwDone/hwTotal*100):0},
-    {c:"vio",I:<BookOpen size={19}/>,                  num:topicsStarted, suf:"", lab:"/"+TOPICS.length+" темы начаты",   bar:Math.round(topicsStarted/TOPICS.length*100)},
-  ];
+      <div className="cc-stats">
+        <div className="cc-stat"><Layers size={16}/><b>{knownCards}/{totalCards}</b><small>карточек выучено</small></div>
+        <div className="cc-stat"><Percent size={16}/><b>{avgQuiz}%</b><small>средний тест</small></div>
+        <div className="cc-stat"><Receipt size={16}/><b>{hwCount}</b><small>домашних заданий</small></div>
+        <div className="cc-stat"><BookOpen size={16}/><b>{TOPICS.length}</b><small>темы</small></div>
+      </div>
 
-  useEffect(()=>{
-    const root=ref.current; if(!root) return;
-    const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ease=p=>1-Math.pow(1-p,3);
-    const rp=root.querySelector("#ccringp"), rv=root.querySelector("#ccringv");
-    if(reduce){
-      if(rp) rp.style.strokeDashoffset=CIRC-CIRC*coursePct/100;
-      if(rv) rv.textContent=coursePct+"%";
-      root.querySelectorAll("[data-c]").forEach(el=>{ el.textContent=el.dataset.c+(el.dataset.suf||""); });
-      root.querySelectorAll(".pbar i,.bar i,.gt i").forEach(i=>{ i.style.width=(i.dataset.w||0)+"%"; });
-      root.querySelectorAll(".bars .bk i").forEach(i=>{ i.style.height=(i.dataset.h||0)+"%"; });
-      return;
-    }
-    const rafs=[]; let t0=null;
-    const animRing=ts=>{ if(!t0)t0=ts; const p=Math.min((ts-t0)/1100,1),e=ease(p);
-      if(rp) rp.style.strokeDashoffset=CIRC-(CIRC*coursePct/100)*e;
-      if(rv) rv.textContent=Math.round(coursePct*e)+"%";
-      if(p<1) rafs.push(requestAnimationFrame(animRing)); };
-    rafs.push(requestAnimationFrame(animRing));
-    root.querySelectorAll("[data-c]").forEach(el=>{
-      const to=+el.dataset.c, suf=el.dataset.suf||""; let s=null;
-      const a=ts=>{ if(!s)s=ts; const p=Math.min((ts-s)/900,1); el.textContent=Math.round(to*ease(p))+suf; if(p<1) rafs.push(requestAnimationFrame(a)); };
-      rafs.push(requestAnimationFrame(a));
-    });
-    const timer=setTimeout(()=>{
-      root.querySelectorAll(".pbar i,.bar i,.gt i").forEach(i=>{ i.style.width=(i.dataset.w||0)+"%"; });
-      root.querySelectorAll(".bars .bk i").forEach(i=>{ i.style.height=(i.dataset.h||0)+"%"; });
-    },300);
-    return ()=>{ rafs.forEach(cancelAnimationFrame); clearTimeout(timer); };
-  },[coursePct]);
-
-  return(<>
-    <div className="cc-scene" aria-hidden="true">
-      {SCENE.map((f,i)=>(
-        <div key={i} className="cc-fi" style={{left:f.l,top:f.t,width:f.s,height:f.s,color:"var("+f.c+")",opacity:f.o,animation:f.a+" ease-in-out infinite",animationDelay:f.d}}>
-          <f.I/>
-        </div>
-      ))}
-    </div>
-
-    <main className="cc-main ccx" ref={ref}>
-      <section className="hero frame reveal">
-        <div className="hero-l">
-          <div className="eyebrow"><span className="dot"></span>{user ? "С возвращением, "+user.name : "Учебный курс"}</div>
-          <h2>Что изучаем <span className="grad">сегодня?</span></h2>
-          <p>Курс «Сертифицированный главный бухгалтер» (ABCO): конспекты, карточки, разобранные задачи, тесты и ИИ-репетитор — всё в одном месте.</p>
-          <div className="chips">
-            <span className="chip amb"><Flame size={15}/> {streak>0 ? streak+" "+dl(streak)+" подряд" : "Начни серию сегодня"}</span>
-            {maxQuiz>0 && <span className="chip em"><Star size={15}/> Лучший тест: {maxQuiz}%</span>}
-            <span className="chip"><Target size={15}/> Цель: {DAY_GOAL} занятий в день</span>
-          </div>
-          <div className="cta-row">
-            <button className="btn btn-primary" onClick={()=>open(nextTopic)}>Продолжить обучение <ArrowRight size={18}/></button>
-            <button className="btn btn-ghost" onClick={()=>open(nextTopic,"tutor")}><Sparkles size={18}/> Спросить ИИ-репетитора</button>
-          </div>
-          <div className="quick">
-            <span className="q-label">Быстрый переход</span>
-            {TOPICS.map((t,i)=>(
-              <span key={t.id} className="tag" onClick={()=>open(t.id)}>
-                <span className="d" style={{background:"var(--"+({em:"emerald",sky:"sky",amb:"amber2",vio:"violet"}[COL[i]])+")"}}></span>{t.code}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="ring-card">
-          <div className="ring">
-            <svg width="170" height="170" viewBox="0 0 170 170">
-              <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
-              <circle id="ccringp" cx="85" cy="85" r="74" fill="none" stroke="url(#ccg)" strokeWidth="12" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC}/>
-              <defs><linearGradient id="ccg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#34D399"/><stop offset="1" stopColor="#38BDF8"/></linearGradient></defs>
-            </svg>
-            <div className="pct"><b id="ccringv">0%</b><small>прогресс курса</small></div>
-          </div>
-          <div className="streak"><Flame size={16}/> {streak>0 ? streak+" "+dl(streak)+" подряд" : "Серия дней: 0"}</div>
-          <div className="goal">
-            <div className="gl"><span>Цель дня</span><span>{Math.min(today,DAY_GOAL)} / {DAY_GOAL}</span></div>
-            <div className="gt"><i data-w={goalPct} style={{width:0}}/></div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ai frame reveal" style={{animationDelay:".08s"}} onClick={()=>open(nextTopic,"tutor")}>
-        <div className="aic"><Sparkles size={27}/></div>
-        <div className="atxt">
-          <h4>ИИ-репетитор всегда рядом</h4>
-          <p>Объяснит проводку, разберёт задачу по МСФО и проверит твой открытый ответ — на русском, по программе курса.</p>
-        </div>
-        <div className="ago"><button className="btn btn-primary" onClick={(e)=>{e.stopPropagation();open(nextTopic,"tutor");}}>Спросить <ArrowRight size={18}/></button></div>
-      </section>
-
-      <div className="sec-head"><h3>Ваша статистика</h3></div>
-      <section className="stats">
-        {STAT.map((s,i)=>(
-          <div className={"stat reveal"+(s.glow?" glow-em":"")} style={{animationDelay:(.05+i*.05)+"s"}} key={i}>
-            <div className="stat-top"><div className={"ic e-"+s.c}>{s.I}</div></div>
-            <b data-c={s.num} data-suf={s.suf}>0{s.suf}</b><span>{s.lab}</span>
-            <div className="bar"><i className={"f-"+s.c} data-w={s.bar} style={{width:0}}/></div>
-          </div>
-        ))}
-      </section>
-
-      <section className="spark reveal" style={{animationDelay:".12s"}}>
-        <div className="sh"><b>Активность за неделю</b>{delta!==null && <span><TrendingUp size={13}/> {delta>=0?"+":""}{delta}% к прошлой неделе</span>}</div>
-        <div className="bars">
-          {week.map((d,i)=>(
-            <div className={"col"+(i===hotIdx?" hot":"")} key={i}>
-              <div className="bk"><i data-h={Math.round(d.count/wkMax*100)} style={{height:0}}/></div>
-              <div className="dl">{d.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="sec-head"><h3>Темы курса</h3></div>
-      <section className="grid">
+      <div className="cc-topics">
         {TOPICS.map((t,i)=>{
-          const p=tp(t.id); const c=COL[i%COL.length];
-          const cardPct=Math.round(p.cardsKnown.length/t.cards.length*100);
-          const done=p.cardsKnown.length>=t.cards.length;
+          const p=tp(t.id); const cardPct=Math.round(p.cardsKnown.length/t.cards.length*100);
           return(
-            <div key={t.id} className={"mod "+c+" reveal"} style={{animationDelay:(.05+i*.05)+"s"}} onClick={()=>open(t.id)}>
-              <div className="mod-top"><span className={"badge b-"+c}>{t.code.toUpperCase()}</span><span className="arrow"><ArrowRight size={18}/></span></div>
-              <h4>{t.title}</h4>
-              <div className="meta">{t.theory.length} разд. · {t.cards.length} карточек · {t.quiz.length} тестов</div>
-              <div className="pwrap"><div className="pbar"><i className={"f-"+c} data-w={cardPct} style={{width:0}}/></div><span className="pval" data-c={cardPct} data-suf="%">0%</span></div>
-              <div className="mod-foot">
-                {done ? <span className="ok"><Check size={14}/> {p.cardsKnown.length} / {t.cards.length} карточек</span> : <span>{p.cardsKnown.length} / {t.cards.length} карточек</span>}
-                <span className={p.quizBest>0&&p.quizBest<50?"warn":""}>тест {p.quizBest}%</span>
+            <button key={t.id} className="cc-tcard" onClick={()=>open(t.id)}>
+              <div className="cc-tcard-top">
+                <span className="cc-tcode">{t.code}</span>
+                <ArrowRight size={16} className="cc-tcard-arr"/>
               </div>
-            </div>
+              <div className="cc-tcard-title">{t.title}</div>
+              <div className="cc-tcard-meta">{t.theory.length} разделов · {t.cards.length} карточек · {t.quiz.length} тестов</div>
+              <Track v={cardPct}/>
+              <div className="cc-tcard-foot"><span>{p.cardsKnown.length}/{t.cards.length} карточек</span><span>тест {p.quizBest}%</span></div>
+            </button>
           );
         })}
-      </section>
+      </div>
 
-      <section className="two">
-        <div className="wide" onClick={goHw}><div className="wic e-sky"><PenTool size={24}/></div><div><h4>Домашние задания</h4><p>Все задачи для самостоятельного решения</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
-        <div className="wide" onClick={goExam}><div className="wic e-amb"><Trophy size={24}/></div><div><h4>Экзамен</h4><p>Задачи с решениями и смешанные тесты</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
-      </section>
+      <div className="cc-actions">
+        <button className="cc-act" onClick={goHw}><PenTool size={18}/><div><b>Домашние задания</b><small>Все задачи для самостоятельного решения</small></div><ArrowRight size={16}/></button>
+        <button className="cc-act amber" onClick={goExam}><Award size={18}/><div><b>Экзамен</b><small>Задачи с решениями и смешанные тесты</small></div><ArrowRight size={16}/></button>
+      </div>
     </main>
-
-    <div className="cc-mcta"><button className="btn btn-primary" onClick={()=>open(nextTopic)}>Продолжить обучение <ArrowRight size={18}/></button></div>
-  </>);
+  );
 }
 
 /* ---------- TOPIC ---------- */
@@ -1498,56 +1418,33 @@ function AdminView({theme,toggleTheme}){
 
 /* ===================== CSS ===================== */
 const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 
 .cc{
- --paper:#EDF3F0;--surf:#FFFFFF;--surf2:#EAF1ED;--ink:#0E1B17;--ink2:#34433D;--mut:#586862;--line:rgba(16,40,34,.12);
- --teal:#0F766E;--tealD:#0F766E;--tealT:rgba(15,118,110,.10);
- --amber:#B45309;--amberT:rgba(180,83,9,.10);--green:#15803D;--greenT:rgba(21,128,61,.10);--red:#B91C1C;--redT:rgba(185,28,28,.09);
- --emerald:#2DD4BF;--emerald2:#34D399;--sky:#38BDF8;--amber2:#FBBF24;--violet:#A78BFA;--rose:#FB7185;
- --card:#FFFFFF;--card2:#FFFFFF;--line2:rgba(16,40,34,.18);--text:#0E1B17;--muted:#586862;--subtext:#34433D;
- --soft:rgba(16,40,34,.03);--soft2:rgba(16,40,34,.05);--soft3:rgba(16,40,34,.09);--track:rgba(16,40,34,.10);
- --header-bg:rgba(255,255,255,.74);--accent-strong:#0F766E;--noise:.022;--gi-op:.16;--mcta-bg:linear-gradient(0deg,rgba(255,255,255,.96),rgba(255,255,255,.6));
- --frame:linear-gradient(135deg,rgba(15,118,110,.55),rgba(3,105,161,.35) 45%,rgba(109,40,217,.5));
- --inner-hl:inset 0 1px 0 rgba(255,255,255,.7);--shadow-card:0 16px 36px -26px rgba(16,40,34,.22);--dot:rgba(16,40,34,.07);
- --radius:20px;--radius-sm:14px;
- --t-em:#0F766E;--t-sky:#0369A1;--t-amb:#B45309;--t-vio:#6D28D9;--t-rose:#BE123C;
- --em-bg:rgba(20,184,166,.12);--sky-bg:rgba(14,165,233,.12);--amb-bg:rgba(245,158,11,.14);--vio-bg:rgba(139,92,246,.13);--rose-bg:rgba(244,63,94,.12);
- --grad:linear-gradient(135deg,#14B8A6,#0EA5A4);
- --grad-soft:linear-gradient(180deg,rgba(20,184,166,.06),rgba(20,184,166,.02));
- --gold:linear-gradient(135deg,#F59E0B,#B45309);
- --hero-bg:radial-gradient(600px 320px at 88% 6%,rgba(20,184,166,.16),transparent 60%),linear-gradient(160deg,#E7F6F0 0%,#FFFFFF 62%);
- --shadow:0 1px 2px rgba(16,40,34,.04),0 6px 18px rgba(16,40,34,.06);
- --shadow-lg:0 18px 48px rgba(12,60,49,.14);
- --serif:'Unbounded',system-ui,sans-serif;--sans:'Manrope',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+ --paper:#F7F6F1;--surf:#FFFFFF;--surf2:#F0F1EC;--ink:#16211D;--ink2:#475650;--mut:#8A938C;--line:#E6E6DD;
+ --teal:#0E7B66;--tealD:#0A5A4B;--tealT:#E6F2EE;
+ --amber:#B07D24;--amberT:#F6EFDC;--green:#2E9E5B;--greenT:#E7F4EC;--red:#C0473F;--redT:#F8E9E7;
+ --grad:linear-gradient(135deg,#11876F 0%,#0A5A4B 100%);
+ --grad-soft:linear-gradient(180deg,rgba(14,123,102,.07),rgba(14,123,102,.03));
+ --gold:linear-gradient(135deg,#C99A3F 0%,#A2761E 100%);
+ --shadow:0 1px 2px rgba(20,33,29,.04),0 6px 18px rgba(20,33,29,.05);
+ --shadow-lg:0 16px 44px rgba(12,60,49,.13);
+ --serif:'Fraunces',Georgia,serif;--sans:'Plus Jakarta Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
  font-family:var(--sans);color:var(--ink);background:
-   radial-gradient(900px 500px at 10% -8%,rgba(20,184,166,.10),transparent 60%),
-   radial-gradient(820px 520px at 96% 0%,rgba(139,92,246,.06),transparent 55%),
+   radial-gradient(900px 460px at 92% -10%,rgba(14,123,102,.06),transparent 60%),
    var(--paper);
  min-height:100vh;-webkit-font-smoothing:antialiased;}
 .cc.dark{
- --paper:#080B0A;--surf:#101715;--surf2:#0E1413;--ink:#F3F7F5;--ink2:#C3D0CB;--mut:#8A9A92;--line:rgba(255,255,255,.08);
- --teal:#2DD4BF;--tealD:#7DE9D8;--tealT:rgba(45,212,191,.13);
- --amber:#FBBF24;--amberT:rgba(251,191,36,.14);--green:#34D399;--greenT:rgba(52,211,153,.13);--red:#FB7185;--redT:rgba(251,113,133,.13);
- --emerald:#2DD4BF;--emerald2:#34D399;--sky:#38BDF8;--amber2:#FBBF24;--violet:#A78BFA;--rose:#FB7185;
- --card:#101715;--card2:#0E1413;--line2:rgba(255,255,255,.12);--text:#F3F7F5;--muted:#8A9A92;--subtext:#C3D0CB;
- --soft:rgba(255,255,255,.02);--soft2:rgba(255,255,255,.04);--soft3:rgba(255,255,255,.08);--track:rgba(255,255,255,.07);
- --header-bg:rgba(8,11,10,.55);--accent-strong:#34D399;--noise:.035;--gi-op:.10;--mcta-bg:linear-gradient(0deg,rgba(8,11,10,.96),rgba(8,11,10,.6));
- --frame:linear-gradient(135deg,rgba(52,211,153,.7),rgba(56,189,248,.45) 45%,rgba(167,139,250,.7));
- --inner-hl:inset 0 1px 0 rgba(255,255,255,.06);--shadow-card:0 16px 38px -26px rgba(0,0,0,.78);--dot:rgba(255,255,255,.06);
- --radius:20px;--radius-sm:14px;
- --t-em:#7DE9D8;--t-sky:#9AD7F8;--t-amb:#FBD37A;--t-vio:#C7B5FB;--t-rose:#FDA4AF;
- --em-bg:rgba(45,212,191,.13);--sky-bg:rgba(56,189,248,.13);--amb-bg:rgba(251,191,36,.14);--vio-bg:rgba(167,139,250,.15);--rose-bg:rgba(251,113,133,.14);
- --grad:linear-gradient(135deg,#34D399,#14B8A6);
- --grad-soft:linear-gradient(180deg,rgba(45,212,191,.10),rgba(45,212,191,.035));
- --gold:linear-gradient(135deg,#FBBF24,#F59E0B);
- --hero-bg:radial-gradient(600px 320px at 88% 6%,rgba(45,212,191,.22),transparent 60%),linear-gradient(160deg,#11201C 0%,#0C1513 62%);
- --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.42);
- --shadow-lg:0 22px 56px rgba(0,0,0,.55);
+ --paper:#0B1310;--surf:#121C18;--surf2:#1B2721;--ink:#EAF1EC;--ink2:#C4CDC8;--mut:#93A09A;--line:#1E2A24;
+ --teal:#3FB89A;--tealD:#6FD3B8;--tealT:#15261F;
+ --amber:#D2A24E;--amberT:#2A2310;--green:#4BC07E;--greenT:#15271B;--red:#E8786E;--redT:#2C1714;
+ --grad:linear-gradient(135deg,#2FA587 0%,#1C7C66 100%);
+ --grad-soft:linear-gradient(180deg,rgba(63,184,154,.10),rgba(63,184,154,.04));
+ --gold:linear-gradient(135deg,#D7AE5A 0%,#B68A30 100%);
+ --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.38);
+ --shadow-lg:0 22px 56px rgba(0,0,0,.5);
  background:
-   radial-gradient(900px 500px at 10% -8%,rgba(45,212,191,.15),transparent 60%),
-   radial-gradient(820px 520px at 96% 0%,rgba(167,139,250,.12),transparent 55%),
-   radial-gradient(700px 600px at 60% 120%,rgba(56,189,248,.09),transparent 60%),
+   radial-gradient(900px 460px at 92% -10%,rgba(63,184,154,.10),transparent 60%),
    var(--paper);}
 .cc *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -1897,219 +1794,4 @@ html,body{margin:0;padding:0;}
 .cc-stat{transition:transform .18s ease;}
 .cc-stat:hover{transform:translateY(-2px);}
 .cc-act:hover .cc-act-ic,.cc-act:hover svg:first-child{transform:scale(1.08);transition:transform .18s ease;}
-
-/* ===== premium home (concept) ===== */
-.cc-hero{display:grid;grid-template-columns:1fr auto;gap:30px;align-items:center;background:var(--hero-bg);border:1px solid var(--line);}
-.cc-hero-l{position:relative;z-index:1;min-width:0;}
-.cc-grad{background:linear-gradient(100deg,#34D399,#38BDF8 60%,#A78BFA);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.cc-cta-row{display:flex;flex-wrap:wrap;gap:11px;margin-top:18px;}
-.cc-cta-row .cc-btn{font-size:14px;padding:13px 20px;}
-.cc-ring-card{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;flex:none;}
-.cc-ring{position:relative;width:150px;height:150px;}
-.cc-rtrack{stroke:var(--surf2);}
-.cc-rprog{transition:stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1);}
-.cc-ring-v{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.cc-ring-v b{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1;color:var(--ink);letter-spacing:-.02em;}
-.cc-ring-v small{font-size:11px;color:var(--mut);margin-top:5px;}
-.cc-stat{flex-direction:column;align-items:flex-start;gap:3px;}
-.cc-stat-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
-.cc-stat .cc-stat-ic svg{color:inherit;}
-.cc-stat b{margin-top:0;}
-.cc-stat.em .cc-stat-ic{background:var(--em-bg);color:var(--t-em);}
-.cc-stat.sky .cc-stat-ic{background:var(--sky-bg);color:var(--t-sky);}
-.cc-stat.amb .cc-stat-ic{background:var(--amb-bg);color:var(--t-amb);}
-.cc-stat.vio .cc-stat-ic{background:var(--vio-bg);color:var(--t-vio);}
-.cc-tcard::after{display:none;}
-.cc-tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;height:auto;opacity:1;background:var(--teal);border-radius:4px 0 0 4px;transition:none;}
-.cc-tcard.em::before{background:var(--emerald);} .cc-tcard.sky::before{background:var(--sky);} .cc-tcard.amb::before{background:var(--amber);} .cc-tcard.vio::before{background:var(--violet);}
-.cc-tcard.em:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--emerald) 55%,transparent);}
-.cc-tcard.sky:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--sky) 55%,transparent);}
-.cc-tcard.amb:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--amber) 50%,transparent);}
-.cc-tcard.vio:hover{box-shadow:0 24px 48px -24px color-mix(in srgb,var(--violet) 55%,transparent);}
-.cc-tcode.em{background:var(--em-bg);color:var(--t-em);} .cc-tcode.sky{background:var(--sky-bg);color:var(--t-sky);} .cc-tcode.amb{background:var(--amb-bg);color:var(--t-amb);} .cc-tcode.vio{background:var(--vio-bg);color:var(--t-vio);}
-.cc-track-f.em{background:linear-gradient(90deg,#34D399,#2DD4BF);} .cc-track-f.sky{background:linear-gradient(90deg,#38BDF8,#0EA5E9);} .cc-track-f.amb{background:linear-gradient(90deg,#FBBF24,#F59E0B);} .cc-track-f.vio{background:linear-gradient(90deg,#A78BFA,#8B5CF6);}
-.cc-act.sky>svg:first-child{background:var(--sky-bg);color:var(--t-sky);}
-@media(max-width:680px){
- .cc-hero{grid-template-columns:1fr;gap:20px;}
- .cc-ring-card{order:-1;align-self:flex-start;}
- .cc-ring{width:116px;height:116px;}
- .cc-ring-v b{font-size:24px;}
- .cc-cta-row .cc-btn{flex:1;justify-content:center;}
-}
-
-/* ===== v2/v3 polish (premium depth, a11y) ===== */
-.cc-stat b,.cc-ring-v b,.cc-done-p,.cc-tcard-foot,.cc-quiz-top{font-variant-numeric:tabular-nums;}
-.cc-rprog{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--emerald) 55%,transparent));}
-.cc.dark .cc-stat,.cc.dark .cc-tcard,.cc.dark .cc-act,.cc.dark .cc-acc-i,.cc.dark .cc-card,.cc.dark .cc-apanel,.cc.dark .cc-task{box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.05);}
-.cc-hero::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--emerald),var(--sky),var(--violet));opacity:.5;z-index:1;}
-@media (prefers-reduced-motion: reduce){ .cc *,.cc *::before,.cc *::after{animation:none!important;transition:none!important;} }
-
-/* ============================================================
-   v4 — ЖИВОЙ премиум-редизайн главной (scoped под .ccx)
-   ============================================================ */
-.cc-main.ccx{position:relative;z-index:1;max-width:1180px;}
-
-/* живой фон: плавающие иконки + аврора + зерно */
-.cc-scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
-.cc-scene::after{content:"";position:absolute;inset:0;background:radial-gradient(500px 360px at 20% 18%,rgba(45,212,191,.10),transparent 60%),radial-gradient(520px 380px at 82% 30%,rgba(167,139,250,.09),transparent 60%);filter:blur(8px);animation:ccaurora 20s ease-in-out infinite;}
-.cc-scene::before{content:"";position:absolute;inset:0;opacity:var(--noise);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-.cc-fi{position:absolute;}
-.cc-fi svg{width:100%;height:100%;stroke-width:1.6;}
-@keyframes ccaurora{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(2.5%,1.8%) scale(1.04);}}
-@keyframes flA{0%,100%{transform:translateY(0) rotate(-6deg);}50%{transform:translateY(-26px) rotate(6deg);}}
-@keyframes flB{0%,100%{transform:translate(0,0) rotate(5deg);}50%{transform:translate(-18px,-20px) rotate(-6deg);}}
-@keyframes flC{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(22px) scale(1.08);}}
-
-/* градиентная рамка */
-.ccx .frame{position:relative;}
-.ccx .frame::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:var(--frame);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
-  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;pointer-events:none;z-index:1;}
-
-/* hero */
-.ccx .hero{margin-top:4px;border-radius:var(--radius);overflow:hidden;position:relative;background:var(--hero-bg);box-shadow:var(--inner-hl),var(--shadow-card);padding:42px 44px;display:grid;grid-template-columns:1fr auto;gap:34px;align-items:center;transition:background .35s ease;}
-.ccx .hero::after{content:"";position:absolute;right:-40px;bottom:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(167,139,250,.18),transparent 65%);pointer-events:none;}
-.ccx .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-strong);margin-bottom:16px;}
-.ccx .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--emerald2);box-shadow:0 0 10px var(--emerald2);}
-.ccx .hero h2{font-family:'Unbounded',sans-serif;font-size:clamp(28px,4.2vw,48px);font-weight:800;line-height:1.04;letter-spacing:-1.5px;margin-bottom:16px;}
-.ccx .hero h2 .grad{background:linear-gradient(100deg,#34D399,#38BDF8 60%,#A78BFA);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.ccx .hero p{font-size:16px;line-height:1.6;color:var(--subtext);max-width:560px;margin-bottom:22px;}
-.ccx .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
-.ccx .chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--soft2);color:var(--text);}
-.ccx .chip.amb{color:var(--t-amb);background:rgba(251,191,36,.12);}
-.ccx .chip.em{color:var(--t-em);background:rgba(45,212,191,.12);}
-.ccx .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
-.ccx .btn{font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;border-radius:13px;padding:14px 24px;display:inline-flex;align-items:center;gap:9px;transition:.22s;color:var(--text);}
-.ccx .btn-primary{background:linear-gradient(135deg,#34D399,#14B8A6);color:#04201c;box-shadow:0 12px 30px -8px rgba(45,212,191,.65);}
-.ccx .btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 40px -8px rgba(45,212,191,.8);}
-.ccx .btn-ghost{background:var(--soft2);color:var(--text);border:1px solid var(--line2);}
-.ccx .btn-ghost:hover{background:var(--soft3);}
-.ccx .quick{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px;}
-.ccx .q-label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
-.ccx .tag{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--subtext);padding:3px 2px;cursor:pointer;transition:.2s;border-bottom:1.5px solid transparent;}
-.ccx .tag .d{width:8px;height:8px;border-radius:50%;}
-.ccx .tag:hover{color:var(--text);border-bottom-color:var(--line2);}
-
-/* ring */
-.ccx .ring-card{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;}
-.ccx .ring-card::before{content:"";position:absolute;top:-14px;width:210px;height:210px;border-radius:50%;
-  background:radial-gradient(closest-side,var(--dot) 1px,transparent 1.4px) 0 0/16px 16px;
-  -webkit-mask:radial-gradient(closest-side,#000 60%,transparent 78%);mask:radial-gradient(closest-side,#000 60%,transparent 78%);opacity:.7;pointer-events:none;}
-.ccx .ring{position:relative;width:170px;height:170px;z-index:1;}
-.ccx .ring svg{transform:rotate(-90deg);width:100%;height:100%;display:block;}
-.ccx .rtrack{stroke:var(--track);}
-.ccx #ccringp{filter:drop-shadow(0 0 7px rgba(52,211,153,.55));transition:stroke-dashoffset .2s linear;}
-.ccx .ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.ccx .ring .pct b{font-family:'Unbounded',sans-serif;font-size:38px;font-weight:800;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;transform:translateY(.1em);}
-.ccx .ring .pct small{position:absolute;top:62%;left:0;right:0;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.05em;}
-.ccx .streak{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--t-amb);font-weight:700;margin-top:12px;}
-.ccx .goal{width:180px;margin-top:6px;}
-.ccx .goal .gl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:5px;letter-spacing:.04em;}
-.ccx .goal .gt{height:6px;border-radius:99px;background:var(--track);overflow:hidden;}
-.ccx .goal .gt i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#34D399,#38BDF8);transition:width 1.2s cubic-bezier(.4,0,.2,1);}
-
-/* AI spotlight */
-.ccx .ai{position:relative;overflow:hidden;margin-top:18px;border-radius:var(--radius);padding:22px 26px;display:flex;align-items:center;gap:20px;cursor:pointer;background:linear-gradient(135deg,rgba(52,211,153,.16),rgba(56,189,248,.10) 70%);box-shadow:var(--inner-hl),var(--shadow-card);transition:transform .22s;}
-.ccx .ai:hover{transform:translateY(-3px);}
-.ccx .ai::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.16) 50%,transparent 68%);transform:translateX(-130%);}
-.ccx .ai:hover::before{animation:ccsweep 1.1s ease;}
-@keyframes ccsweep{to{transform:translateX(130%);}}
-.ccx .ai .aic{width:54px;height:54px;flex-shrink:0;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#34D399,#0EA5A4);box-shadow:0 10px 30px -8px rgba(45,212,191,.7);color:#04201c;}
-.ccx .ai .atxt{flex:1;min-width:0;}
-.ccx .ai h4{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;color:var(--text);}
-.ccx .ai p{font-size:13.5px;color:var(--subtext);line-height:1.45;}
-.ccx .ai .ago{flex-shrink:0;}
-
-/* sections */
-.ccx .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:38px 4px 16px;}
-.ccx .sec-head h3{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;color:var(--text);}
-
-/* stats */
-.ccx .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
-.ccx .stat{position:relative;border-radius:var(--radius-sm);padding:18px 18px 16px;background:var(--card);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;transition:.22s;}
-.ccx .stat:hover{transform:translateY(-3px);border-color:var(--line2);}
-.ccx .stat-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
-.ccx .stat .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;}
-.ccx .stat b{font-family:'Unbounded',sans-serif;font-size:30px;font-weight:800;display:block;line-height:1;letter-spacing:-1px;color:var(--text);font-variant-numeric:tabular-nums;}
-.ccx .stat span{font-size:13px;color:var(--muted);font-weight:500;}
-.ccx .stat .bar{height:5px;border-radius:99px;background:var(--track);margin-top:13px;overflow:hidden;}
-.ccx .stat .bar i{display:block;height:100%;border-radius:99px;width:0;transition:width 1.1s cubic-bezier(.4,0,.2,1);}
-.ccx .glow-em{box-shadow:var(--inner-hl),var(--shadow-card),inset 0 0 0 1px rgba(45,212,191,.18),0 0 40px -22px var(--emerald);}
-.ccx .e-em{background:rgba(45,212,191,.13);color:var(--t-em);} .ccx .f-em{background:linear-gradient(90deg,#34D399,#2DD4BF);}
-.ccx .e-sky{background:rgba(56,189,248,.13);color:var(--t-sky);} .ccx .f-sky{background:linear-gradient(90deg,#38BDF8,#0EA5E9);}
-.ccx .e-amb{background:rgba(251,191,36,.14);color:var(--t-amb);} .ccx .f-amb{background:linear-gradient(90deg,#FBBF24,#F59E0B);}
-.ccx .e-vio{background:rgba(167,139,250,.15);color:var(--t-vio);} .ccx .f-vio{background:linear-gradient(90deg,#A78BFA,#8B5CF6);}
-
-/* weekly sparkline */
-.ccx .spark{margin-top:14px;border-radius:var(--radius-sm);padding:16px 18px;background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);}
-.ccx .spark .sh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
-.ccx .spark .sh b{font-size:13px;font-weight:700;color:var(--text);}
-.ccx .spark .sh span{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--t-em);font-weight:700;}
-.ccx .bars{display:flex;align-items:flex-end;gap:10px;height:56px;}
-.ccx .bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.ccx .bars .bk{width:100%;max-width:26px;height:44px;border-radius:7px;background:var(--track);display:flex;align-items:flex-end;overflow:hidden;}
-.ccx .bars .bk i{display:block;width:100%;height:0;border-radius:7px;background:linear-gradient(180deg,#34D399,#2DD4BF);transition:height 1s cubic-bezier(.4,0,.2,1);}
-.ccx .bars .col.hot .bk i{background:linear-gradient(180deg,#FBBF24,#F59E0B);}
-.ccx .bars .dl{font-size:10.5px;color:var(--muted);font-weight:600;}
-
-/* topic modules */
-.ccx .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
-.ccx .mod{position:relative;border-radius:var(--radius);padding:24px;background:var(--card);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;cursor:pointer;transition:.25s;}
-.ccx .mod::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;}
-.ccx .mod:hover{transform:translateY(-4px);border-color:var(--line2);}
-.ccx .mod.em::before{background:var(--emerald);} .ccx .mod.em:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(45,212,191,.5);}
-.ccx .mod.sky::before{background:var(--sky);} .ccx .mod.sky:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(56,189,248,.5);}
-.ccx .mod.amb::before{background:var(--amber2);} .ccx .mod.amb:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(251,191,36,.45);}
-.ccx .mod.vio::before{background:var(--violet);} .ccx .mod.vio:hover{box-shadow:var(--inner-hl),0 24px 50px -24px rgba(167,139,250,.5);}
-.ccx .mod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.ccx .badge{font-family:'Manrope',sans-serif;font-size:12px;font-weight:800;letter-spacing:.04em;padding:5px 11px;border-radius:8px;}
-.ccx .b-em{background:rgba(45,212,191,.14);color:var(--t-em);} .ccx .b-sky{background:rgba(56,189,248,.14);color:var(--t-sky);}
-.ccx .b-amb{background:rgba(251,191,36,.16);color:var(--t-amb);} .ccx .b-vio{background:rgba(167,139,250,.16);color:var(--t-vio);}
-.ccx .mod h4{font-family:'Unbounded',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.4px;margin-bottom:7px;color:var(--text);}
-.ccx .mod .meta{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:18px;}
-.ccx .pwrap{display:flex;align-items:center;gap:12px;margin-bottom:9px;}
-.ccx .pbar{flex:1;height:7px;border-radius:99px;background:var(--track);overflow:hidden;}
-.ccx .pbar i{display:block;height:100%;border-radius:99px;width:0;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
-.ccx .pval{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted);min-width:34px;text-align:right;}
-.ccx .mod-foot{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--muted);font-weight:600;}
-.ccx .mod-foot .ok{display:inline-flex;align-items:center;gap:5px;color:var(--t-em);}
-.ccx .mod-foot .warn{color:var(--t-amb);}
-.ccx .arrow{width:40px;height:40px;border-radius:12px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--text);transition:.2s;}
-.ccx .mod:hover .arrow{background:var(--soft3);transform:translateX(3px);}
-
-/* wide action cards */
-.ccx .two{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px;}
-.ccx .wide{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:var(--radius);background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);cursor:pointer;transition:.22s;}
-.ccx .wide:hover{transform:translateY(-3px);border-color:var(--line2);}
-.ccx .wide .wic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;flex-shrink:0;}
-.ccx .wide h4{font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px;color:var(--text);}
-.ccx .wide p{font-size:13px;color:var(--muted);line-height:1.4;}
-.ccx .wide .wgo{margin-left:auto;color:var(--muted);display:flex;} .ccx .wide:hover .wgo{color:var(--text);}
-
-/* mobile sticky CTA */
-.cc-mcta{display:none;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--mcta-bg);border-top:1px solid var(--line);backdrop-filter:blur(10px);}
-.cc-mcta .btn{width:100%;justify-content:center;font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;border-radius:13px;padding:14px 24px;display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#34D399,#14B8A6);color:#04201c;box-shadow:0 12px 30px -8px rgba(45,212,191,.65);}
-
-/* reveal-in */
-.ccx .reveal{opacity:0;transform:translateY(18px);animation:ccup .6s forwards;}
-@keyframes ccup{to{opacity:1;transform:none;}}
-
-@media (prefers-reduced-motion: reduce){
-  .cc-fi{animation:none!important;}
-  .cc-scene::after{animation:none!important;}
-  .ccx .reveal{opacity:1;transform:none;animation:none;}
-}
-
-@media(max-width:760px){
-  .cc-main.ccx{padding-left:16px;padding-right:16px;}
-  .ccx .hero{grid-template-columns:1fr;padding:30px 22px;gap:26px;}
-  .ccx .ring-card{order:-1;align-self:start;}
-  .ccx .ring{width:128px;height:128px;} .ccx .ring .pct b{font-size:28px;}
-  .ccx .goal{width:150px;}
-  .ccx .stats{grid-template-columns:repeat(2,1fr);}
-  .ccx .grid,.ccx .two{grid-template-columns:1fr;}
-  .ccx .ai{flex-wrap:wrap;} .ccx .ai .ago{width:100%;} .ccx .ai .ago .btn{width:100%;justify-content:center;}
-  .cc-mcta{display:block;}
-  .cc-fi{opacity:.10!important;}
-}
 `;
