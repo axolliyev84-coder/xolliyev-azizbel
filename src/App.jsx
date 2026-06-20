@@ -4,15 +4,42 @@ import {
   Check, X, RotateCcw, ArrowRight, ArrowLeft, RefreshCw, Loader2, Home,
   Lightbulb, AlertTriangle, ChevronDown, Eye, EyeOff, Trophy, Target,
   FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
-  Sun, Moon, LogIn, LogOut, Flame, Coins, Scale, Landmark, Percent, TrendingUp, Building2, Receipt, Trash2
+  Sun, Moon, LogIn, LogOut, Flame, Coins, Scale, Landmark, Percent, TrendingUp, Building2, Receipt, Trash2,
+  UserPlus, User, Lock
 } from "lucide-react";
 
 /* ===================== STORAGE (localStorage) ===================== */
 const PKEY = "mscfo_course_v1";
 const TKEY = "mscfo_theme_v1";
 const UKEY = "mscfo_user_v1";
+const TOKKEY = "mscfo_token_v1";
 function sGet(k){ try{ return Promise.resolve(localStorage.getItem(k)); }catch{ return Promise.resolve(null); } }
 function sSet(k,v){ try{ localStorage.setItem(k,v); }catch{} return Promise.resolve(); }
+
+/* ===================== AUTH (server akkauntlari) ===================== */
+// Server /api/auth bilan ishlaydi. Agar server sozlanmagan bo'lsa (503),
+// sayt "mehmon" rejimida ishlashda davom etadi — eski xulq buzilmaydi.
+async function authCall(action, payload){
+  const res = await fetch("/api/auth",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ action, ...payload })
+  });
+  let data={};
+  try{ data = await res.json(); }catch{}
+  if(!res.ok){ const err=new Error(data.error||("HTTP "+res.status)); err.code=data.error; err.status=res.status; throw err; }
+  return data;
+}
+function authErrText(e){
+  const m={
+    "login-short":"Логин слишком короткий (минимум 3 символа).",
+    "password-short":"Пароль слишком короткий (минимум 6 символов).",
+    "login-taken":"Этот логин уже занят.",
+    "bad-credentials":"Неверный логин или пароль.",
+    "auth-unavailable":"Аккаунты пока не настроены — войдите как гость.",
+  };
+  return m[e&&e.code] || "Ошибка. Попробуйте ещё раз.";
+}
 
 /* ===================== AI ===================== */
 async function callAI(prompt, ground, maxTokens=900){
@@ -830,11 +857,39 @@ export default function App(){
   const [ready,setReady]=useState(false);
   const [theme,setTheme]=useState("light");
   const [user,setUser]=useState(null);
+  const [token,setToken]=useState(null);
   const [nameDraft,setNameDraft]=useState("");
+  // kirish oynasi (auth gate) formasi
+  const [authMode,setAuthMode]=useState("login");   // login | register | guest
+  const [auLogin,setAuLogin]=useState("");
+  const [auPass,setAuPass]=useState("");
+  const [auName,setAuName]=useState("");
+  const [auBusy,setAuBusy]=useState(false);
+  const [auErr,setAuErr]=useState("");
+  const progSyncTimer = useRef(null);
 
-  useEffect(()=>{(async()=>{ const raw=await sGet(PKEY); if(raw){try{setProg(JSON.parse(raw));}catch{}} setReady(true); })();},[]);
-  useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t);
-    const u=localStorage.getItem(UKEY); if(u){ try{ setUser(JSON.parse(u)); }catch{} } }catch{} },[]);
+  useEffect(()=>{(async()=>{
+    let localProg={};
+    const raw=await sGet(PKEY); if(raw){ try{ localProg=JSON.parse(raw)||{}; }catch{} }
+    setProg(localProg);
+    // Server sessiyasini tiklashga urinish (token saqlangan bo'lsa)
+    let tok=null; try{ tok=localStorage.getItem(TOKKEY); }catch{}
+    if(tok){
+      try{
+        const d=await authCall("me",{token:tok});
+        setToken(tok);
+        setUser({login:d.profile.login,name:d.profile.name,plan:d.profile.plan,server:true,certs:d.profile.certs||[]});
+        const sp=d.profile.prog||{};
+        const merged=Object.keys(sp).length? sp : localProg;
+        setProg(merged); await sSet(PKEY,JSON.stringify(merged));
+        setReady(true); return;
+      }catch{ try{ localStorage.removeItem(TOKKEY); }catch{} }
+    }
+    // Mehmon sessiyasi (eski xulq — faqat ism, localStorage)
+    try{ const u=localStorage.getItem(UKEY); if(u){ setUser(JSON.parse(u)); } }catch{}
+    setReady(true);
+  })();},[]);
+  useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t); }catch{} },[]);
   const visitSent = useRef(false);
   useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
   useEffect(()=>{ try{ const bg = theme==="dark" ? "#0B1310" : "#F7F6F1"; document.documentElement.style.background=bg; document.body.style.background=bg; document.body.style.margin="0"; }catch{} },[theme]);
@@ -842,12 +897,42 @@ export default function App(){
   useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
   useEffect(()=>{ try{ var d=document.documentElement; d.style.backgroundColor = theme==="dark"?"#0B1310":"#F7F6F1"; d.style.colorScheme = theme==="dark"?"dark":"light"; }catch{} },[theme]);
 
-  const save=useCallback(async(p)=>{ setProg(p); await sSet(PKEY,JSON.stringify(p)); },[]);
+  const save=useCallback(async(p)=>{
+    setProg(p);
+    await sSet(PKEY,JSON.stringify(p));
+    if(user&&user.server&&token){
+      if(progSyncTimer.current) clearTimeout(progSyncTimer.current);
+      progSyncTimer.current=setTimeout(()=>{ authCall("saveProgress",{token,prog:p}).catch(()=>{}); },1200);
+    }
+  },[user,token]);
   function tp(id){ return prog[id]||{cardsKnown:[],quizBest:0,hw:{}}; }
   function setTP(id,patch){ const cur=tp(id); save({...prog,[id]:{...cur,...patch}}); }
   function toggleTheme(){ const nt=theme==="dark"?"light":"dark"; setTheme(nt); try{localStorage.setItem(TKEY,nt);}catch{} }
-  function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
-  function logout(){ visitSent.current=false; setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
+  function applyAuth(d){
+    try{ localStorage.setItem(TOKKEY,d.token); }catch{}
+    try{ localStorage.removeItem(UKEY); }catch{}
+    setToken(d.token);
+    setUser({login:d.profile.login,name:d.profile.name,plan:d.profile.plan,server:true,certs:d.profile.certs||[]});
+    const sp=d.profile.prog||{};
+    if(Object.keys(sp).length){ setProg(sp); sSet(PKEY,JSON.stringify(sp)); }
+    setAuPass(""); setAuErr("");
+  }
+  async function doRegister(){
+    const login=auLogin.trim(); if(login.length<3||auPass.length<6) return;
+    setAuBusy(true); setAuErr("");
+    try{ const d=await authCall("register",{login,password:auPass,name:auName.trim()||login,prog}); applyAuth(d); }
+    catch(e){ setAuErr(authErrText(e)); if(e.code==="auth-unavailable") setAuthMode("guest"); }
+    finally{ setAuBusy(false); }
+  }
+  async function doLoginSrv(){
+    const login=auLogin.trim(); if(!login||!auPass) return;
+    setAuBusy(true); setAuErr("");
+    try{ const d=await authCall("login",{login,password:auPass}); applyAuth(d); }
+    catch(e){ setAuErr(authErrText(e)); if(e.code==="auth-unavailable") setAuthMode("guest"); }
+    finally{ setAuBusy(false); }
+  }
+  function doGuest(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
+  function logout(){ visitSent.current=false; setUser(null); setToken(null); try{localStorage.removeItem(UKEY); localStorage.removeItem(TOKKEY);}catch{} }
   function track(type,detail){ if(!user) return; const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
@@ -866,10 +951,31 @@ export default function App(){
         <div className="cc-gate-card">
           <div className="cc-gate-logo"><Sparkles size={28}/></div>
           <h1 className="cc-gate-t">MCFO Kurs AI</h1>
-          <p className="cc-gate-s">Интерактивный курс МСФО: теория, карточки, разобранные задачи, тесты и ИИ-репетитор. Войдите, чтобы начать — введите имя, и ваш прогресс сохранится.</p>
-          <input className="cc-modal-in" placeholder="Ваше имя" value={nameDraft} maxLength={24} autoFocus
-            onChange={e=>setNameDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
-          <button className="cc-btn primary cc-modal-go" disabled={!nameDraft.trim()} onClick={doLogin}><LogIn size={16}/> Войти</button>
+
+          {authMode==="guest" ? (<>
+            <p className="cc-gate-s">Войдите как гость — прогресс сохранится только на этом устройстве.</p>
+            <div className="cc-gate-field"><User size={16}/><input className="cc-gate-in" placeholder="Ваше имя" value={nameDraft} maxLength={24} autoFocus
+              onChange={e=>setNameDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doGuest()}/></div>
+            <button className="cc-btn primary cc-modal-go" disabled={!nameDraft.trim()} onClick={doGuest}><LogIn size={16}/> Продолжить</button>
+            <button className="cc-gate-link" onClick={()=>{setAuthMode("login");setAuErr("");}}>← Вход в аккаунт</button>
+          </>) : (<>
+            <p className="cc-gate-s">Интерактивный курс МСФО: теория, карточки, разобранные задачи, тесты и ИИ-репетитор. Создайте аккаунт — прогресс сохранится в облаке и будет доступен на любом устройстве.</p>
+            <div className="cc-gate-tabs">
+              <button className={"cc-gate-tab"+(authMode==="login"?" on":"")} onClick={()=>{setAuthMode("login");setAuErr("");}}>Вход</button>
+              <button className={"cc-gate-tab"+(authMode==="register"?" on":"")} onClick={()=>{setAuthMode("register");setAuErr("");}}>Регистрация</button>
+            </div>
+            <div className="cc-gate-field"><User size={16}/><input className="cc-gate-in" placeholder="Логин (или email)" value={auLogin} maxLength={60} autoComplete="username"
+              onChange={e=>setAuLogin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(authMode==="register"?doRegister():doLoginSrv())}/></div>
+            {authMode==="register" && <div className="cc-gate-field"><UserPlus size={16}/><input className="cc-gate-in" placeholder="Ваше имя" value={auName} maxLength={40}
+              onChange={e=>setAuName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doRegister()}/></div>}
+            <div className="cc-gate-field"><Lock size={16}/><input className="cc-gate-in" type="password" placeholder="Пароль" value={auPass} maxLength={100} autoComplete={authMode==="register"?"new-password":"current-password"}
+              onChange={e=>setAuPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(authMode==="register"?doRegister():doLoginSrv())}/></div>
+            {auErr && <div className="cc-gate-err">{auErr}</div>}
+            {authMode==="register"
+              ? <button className="cc-btn primary cc-modal-go" disabled={auBusy||auLogin.trim().length<3||auPass.length<6} onClick={doRegister}>{auBusy?<Loader2 size={16} className="cc-spin"/>:<UserPlus size={16}/>} Создать аккаунт</button>
+              : <button className="cc-btn primary cc-modal-go" disabled={auBusy||!auLogin.trim()||!auPass} onClick={doLoginSrv}>{auBusy?<Loader2 size={16} className="cc-spin"/>:<LogIn size={16}/>} Войти</button>}
+            <button className="cc-gate-link" onClick={()=>{setAuthMode("guest");setAuErr("");}}>Продолжить как гость →</button>
+          </>)}
         </div>
       </div>
     </div>
@@ -1737,6 +1843,15 @@ html,body{margin:0;padding:0;}
 .cc-modal-in{width:100%;background:var(--surf2);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;font-size:15px;font-family:var(--sans);color:var(--ink);margin-bottom:13px;text-align:center;}
 .cc-modal-in:focus{outline:none;border-color:var(--teal);background:var(--surf);}
 .cc-modal-go{width:100%;padding:14px;font-size:15px;}
+.cc-gate-tabs{display:flex;gap:6px;background:var(--surf2);border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:16px;}
+.cc-gate-tab{flex:1;padding:10px;font-size:13.5px;font-weight:600;border:0;border-radius:9px;background:transparent;color:var(--ink2);cursor:pointer;font-family:var(--sans);transition:.15s;}
+.cc-gate-tab.on{background:var(--surf);color:var(--ink);box-shadow:var(--shadow);}
+.cc-gate-field{display:flex;align-items:center;gap:10px;background:var(--surf2);border:1.5px solid var(--line);border-radius:13px;padding:0 14px;margin-bottom:11px;color:var(--mut);transition:.15s;}
+.cc-gate-field:focus-within{border-color:var(--teal);background:var(--surf);color:var(--teal);}
+.cc-gate-in{flex:1;background:transparent;border:0;outline:none;padding:14px 0;font-size:15px;font-family:var(--sans);color:var(--ink);}
+.cc-gate-err{font-size:12.5px;color:#D9544E;background:color-mix(in srgb,#D9544E 12%,transparent);border:1px solid color-mix(in srgb,#D9544E 30%,transparent);border-radius:10px;padding:9px 12px;margin-bottom:12px;text-align:left;}
+.cc-gate-link{background:none;border:0;color:var(--ink2);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);margin-top:14px;padding:4px;transition:.15s;}
+.cc-gate-link:hover{color:var(--teal);}
 
 /* admin */
 .cc-astats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:22px;}
