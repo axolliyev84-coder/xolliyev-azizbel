@@ -18,11 +18,15 @@ function sSet(k,v){ try{ localStorage.setItem(k,v); }catch{} return Promise.reso
 /* ===================== AI ===================== */
 async function callAI(prompt, ground, maxTokens=900){
   // Kalit serverda (api/chat.js) saqlanadi — brauzerga umuman chiqmaydi.
+  // Foydalanuvchi ismini ham yuboramiz: server kunlik limitni shu bo'yicha hisoblaydi.
+  let user="";
+  try{ const u=JSON.parse(localStorage.getItem(UKEY)||"null"); user=(u&&u.name)||""; }catch{}
   const res = await fetch("/api/chat",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ prompt, ground, maxTokens })
+    body: JSON.stringify({ prompt, ground, maxTokens, user })
   });
+  if(res.status===429||res.status===403){ let m=""; try{ m=(await res.json()).error; }catch{} throw new Error(m||"Лимит запросов исчерпан. Попробуйте позже."); }
   if(!res.ok) throw new Error("API "+res.status);
   const data = await res.json();
   return data.text || "";
@@ -1271,7 +1275,7 @@ function Quiz({topic,p,setTP,track}){
 function Tutor({topic}){
   const [q,setQ]=useState(""); const [log,setLog]=useState([]); const [busy,setBusy]=useState(false);
   async function ask(text){ const Q=(text||q).trim(); if(!Q||busy)return; setLog(l=>[...l,{r:"u",t:Q}]); setQ(""); setBusy(true);
-    try{ const a=await callAI(Q,topic.ground,900); setLog(l=>[...l,{r:"a",t:a}]); }catch{ setLog(l=>[...l,{r:"a",t:"Не удалось получить ответ."}]); } finally{setBusy(false);} }
+    try{ const a=await callAI(Q,topic.ground,900); setLog(l=>[...l,{r:"a",t:a}]); }catch(e){ setLog(l=>[...l,{r:"a",t:(e&&e.message)||"Не удалось получить ответ."}]); } finally{setBusy(false);} }
   return(
     <div className="cc-view">
       <p className="cc-note-lead">ИИ-репетитор отвечает по теме «{topic.title}», опираясь на ваш курс.</p>
