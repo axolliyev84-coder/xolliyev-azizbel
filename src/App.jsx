@@ -1240,7 +1240,7 @@ function Quiz({topic,p,setTP,track}){
     try{ const t=await callAI(`Вопрос: "${q.q}"\nОбразец: "${q.sample}"\nОтвет студента: "${draft.trim()}"\nОцени 0-100, кратко прокомментируй. Верни ТОЛЬКО JSON: [{"ball":<0-100>,"fikr":"..."}]`,topic.ground,500);
       const o=parseArr(t)[0]||{}; const sc=Math.max(0,Math.min(100,Number(o.ball)||0));
       setRes(a=>a.map((x,i)=>i===idx?{open:true,given:draft.trim(),score:sc,correct:sc>=60,fb:o.fikr||""}:x));
-    }catch{ setRes(a=>a.map((x,i)=>i===idx?{open:true,given:draft.trim(),score:0,correct:false,fb:"Не удалось оценить."}:x)); }
+    }catch(e){ setRes(a=>a.map((x,i)=>i===idx?{open:true,given:draft.trim(),score:0,correct:false,fb:(e&&e.message)||"Не удалось оценить."}:x)); }
     finally{setEv(false);}
   }
   function next(){ setDraft(""); if(idx+1>=QUIZ.length){ const c=res.filter(x=>x&&x.correct).length; const pct=Math.round(c/QUIZ.length*100); if(pct>p.quizBest) setTP(topic.id,{quizBest:pct}); if(track) track("quiz",topic.code+": "+pct+"%"); setStage("done"); } else setIdx(idx+1); }
