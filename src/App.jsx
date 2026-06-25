@@ -5,7 +5,8 @@ import {
   Lightbulb, AlertTriangle, ChevronDown, Eye, EyeOff, Trophy, Target,
   FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
   Sun, Moon, LogIn, LogOut, Gauge, Flame, Star, PieChart, DollarSign, BarChart3,
-  Landmark, Scale, Coins, Percent, Receipt, TrendingUp, Building2, Trash2
+  Landmark, Scale, Coins, Percent, Receipt, TrendingUp, Building2, Trash2,
+  Menu, User, Clock, MessageSquare
 } from "lucide-react";
 
 /* ===================== STORAGE (localStorage) ===================== */
@@ -1087,6 +1088,11 @@ export default function App(){
   const [theme,setTheme]=useState("light");
   const [user,setUser]=useState(null);
   const [nameDraft,setNameDraft]=useState("");
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [modal,setModal]=useState(null);        // null | account | recent | feedback
+  const [nameEdit,setNameEdit]=useState("");
+  const [fbText,setFbText]=useState("");
+  const [fbSent,setFbSent]=useState(false);
 
   useEffect(()=>{(async()=>{ const raw=await sGet(PKEY); if(raw){try{setProg(JSON.parse(raw));}catch{}} setReady(true); })();},[]);
   useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t);
@@ -1105,6 +1111,9 @@ export default function App(){
   function doLogin(){ const n=nameDraft.trim(); if(!n) return; const u={name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} setNameDraft(""); }
   function logout(){ visitSent.current=false; setUser(null); try{localStorage.removeItem(UKEY);}catch{} }
   function track(type,detail){ if(!user) return; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:type,d:detail||"",cards:s.cards,avg:s.avg}); }
+  function openModal(m){ setMenuOpen(false); if(m==="account") setNameEdit((user&&user.name)||""); if(m==="feedback"){ setFbText(""); setFbSent(false); } setModal(m); }
+  function saveName(){ const n=nameEdit.trim(); if(!n) return; const u={...(user||{}),name:n.slice(0,24)}; setUser(u); try{localStorage.setItem(UKEY,JSON.stringify(u));}catch{} }
+  function sendFeedback(){ const t=fbText.trim(); if(!t) return; const s=progStats(prog); sendEvent({u:(user&&user.name)||"—",t:"feedback",d:t.slice(0,1000),cards:s.cards,avg:s.avg}); setFbSent(true); }
 
   const rootCls = "cc"+(theme==="dark"?" dark":"");
   const adminRoute = typeof window!=="undefined" && (/\/admin\/?$/.test(window.location.pathname) || window.location.hash==="#admin");
@@ -1146,6 +1155,17 @@ export default function App(){
           <button className="cc-icon-btn" onClick={toggleTheme} title={theme==="dark"?"Светлая тема":"Тёмная тема"} aria-label="Сменить тему">
             {theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}
           </button>
+          <div className="cc-menu-wrap">
+            <button className="cc-icon-btn" onClick={()=>setMenuOpen(o=>!o)} title="Меню" aria-label="Меню"><Menu size={17}/></button>
+            {menuOpen && <>
+              <div className="cc-menu-back" onClick={()=>setMenuOpen(false)}/>
+              <div className="cc-menu" role="menu">
+                <button className="cc-menu-i" onClick={()=>openModal("account")}><User size={16}/> Аккаунт</button>
+                <button className="cc-menu-i" onClick={()=>openModal("recent")}><Clock size={16}/> Недавно добавленные</button>
+                <button className="cc-menu-i" onClick={()=>openModal("feedback")}><MessageSquare size={16}/> Сообщить об ошибке</button>
+              </div>
+            </>}
+          </div>
           <div className="cc-auth">
             <span className="cc-avatar">{user.name.charAt(0).toUpperCase()}</span>
             <span className="cc-auth-name">{user.name}</span>
@@ -1158,6 +1178,52 @@ export default function App(){
       {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")} track={track}/>}
       {view==="hw" && <HomeworkHub goHome={()=>setView("home")}/>}
       {view==="exam" && <ExamView prog={prog} save={save} track={track} goHome={()=>setView("home")}/>}
+
+      {modal && <div className="cc-mov" onClick={()=>setModal(null)}>
+        <div className="cc-mcard" onClick={e=>e.stopPropagation()}>
+          <button className="cc-mx" onClick={()=>setModal(null)} aria-label="Закрыть"><X size={18}/></button>
+
+          {modal==="account" && <>
+            <div className="cc-mhead"><span className="cc-avatar lg">{((user&&user.name)||"?").charAt(0).toUpperCase()}</span>
+              <div><div className="cc-mtitle">Аккаунт</div><div className="cc-msub">{user&&user.name}</div></div></div>
+            <label className="cc-mlabel">Имя</label>
+            <input className="cc-modal-in" style={{textAlign:"left"}} value={nameEdit} maxLength={24}
+              onChange={e=>setNameEdit(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveName()}/>
+            <div className="cc-mrow">
+              <button className="cc-btn primary" style={{flex:1}} disabled={!nameEdit.trim()||nameEdit.trim()===(user&&user.name)} onClick={saveName}><Check size={16}/> Сохранить</button>
+              <button className="cc-btn dno" onClick={()=>{ setModal(null); logout(); }}><LogOut size={16}/> Выйти</button>
+            </div>
+          </>}
+
+          {modal==="recent" && <>
+            <div className="cc-mtitle" style={{marginBottom:4}}>Недавно добавленные</div>
+            <div className="cc-msub" style={{marginBottom:14}}>Новые темы курса — последние сверху.</div>
+            <div className="cc-rlist">
+              {[...TOPICS].reverse().slice(0,6).map((t,i)=>{ const n=(t.theory||[]).length; const w=(n%10===1&&n%100!==11)?"урок":((n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"урока":"уроков"); return (
+                <button className="cc-ritem" key={t.id} onClick={()=>{ setModal(null); setTopicId(t.id); setTab("theory"); setView("topic"); track("topic",(TMAP[t.id]||{}).code||t.id); }}>
+                  <span className="cc-rico"><BookOpen size={16}/></span>
+                  <span className="cc-rmid"><span className="cc-rtitle">{t.title}</span><span className="cc-rmeta">{t.code} · {n} {w}</span></span>
+                  {i===0 && <span className="cc-rnew">новое</span>}
+                  <ArrowRight size={15}/>
+                </button>
+              ); })}
+            </div>
+          </>}
+
+          {modal==="feedback" && (fbSent ? <div className="cc-mok">
+              <span className="cc-mok-ic"><CheckCircle2 size={28}/></span>
+              <div className="cc-mtitle">Спасибо!</div>
+              <div className="cc-msub" style={{margin:"6px 0 18px"}}>Ваше сообщение отправлено. Мы исправим это в ближайшее время.</div>
+              <button className="cc-btn primary cc-modal-go" onClick={()=>setModal(null)}>Закрыть</button>
+            </div> : <>
+              <div className="cc-mtitle" style={{marginBottom:4}}>Сообщить об ошибке</div>
+              <div className="cc-msub" style={{marginBottom:12}}>Если вы нашли ошибку или неточность — напишите нам, и мы исправим.</div>
+              <textarea className="cc-mta" placeholder="Опишите ошибку или замечание…" value={fbText} maxLength={1000} autoFocus onChange={e=>setFbText(e.target.value)}/>
+              <button className="cc-btn primary cc-modal-go" disabled={!fbText.trim()} onClick={sendFeedback}><Send size={16}/> Отправить</button>
+            </>)}
+
+        </div>
+      </div>}
     </div>
   </>);
 }
@@ -1749,8 +1815,8 @@ function AdminView({theme,toggleTheme}){
   const tc={}; for(const e of events){ if(e.t==="topic"){ const k=e.d||"—"; tc[k]=(tc[k]||0)+1; } }
   const topTopics=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxTopic=Math.max(1,...topTopics.map(x=>x[1]));
-  const TICON={login:<LogIn size={15}/>,topic:<BookOpen size={15}/>,quiz:<ClipboardList size={15}/>,exam:<Award size={15}/>};
-  const TTXT={login:"вошёл(ла) в систему",topic:"открыл(а) тему",quiz:"тест",exam:"экзамен"};
+  const TICON={login:<LogIn size={15}/>,topic:<BookOpen size={15}/>,quiz:<ClipboardList size={15}/>,exam:<Award size={15}/>,feedback:<MessageSquare size={15}/>};
+  const TTXT={login:"вошёл(ла) в систему",topic:"открыл(а) тему",quiz:"тест",exam:"экзамен",feedback:"сообщил(а) об ошибке:"};
   return(<>
     <header className="cc-top">
       <div className="cc-brand" style={{cursor:"default"}}>
@@ -1773,6 +1839,20 @@ function AdminView({theme,toggleTheme}){
         <div className="cc-stat"><ClipboardList size={16}/><b>{testsDone}</b><small>тестов сдано</small></div>
         <div className="cc-stat"><Trophy size={16}/><b>{avgScore}%</b><small>ср. балл</small></div>
       </div>
+      {(()=>{ const fb=events.filter(e=>e.t==="feedback"); return fb.length>0 ? (
+        <div className="cc-fbsec">
+          <div className="cc-note-lead" style={{margin:"0 0 8px"}}><MessageSquare size={15} style={{verticalAlign:"-2px",marginRight:6,color:"var(--amber)"}}/>Сообщения об ошибках · {fb.length}</div>
+          <div className="cc-adm-feed">
+            {fb.slice(0,40).map((e,i)=>(
+              <div className="cc-adm-fi" key={i}>
+                <span className="cc-adm-ic" style={{color:"var(--amber)"}}><MessageSquare size={15}/></span>
+                <span className="cc-adm-ft"><b>{e.u}</b> — {e.d}</span>
+                <span className="cc-adm-fts">{fmtTime(e.ts)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null; })()}
       {events.length===0 ? <div className="cc-empty"><Brain size={26}/><p>Пока нет данных. Как только ученики начнут заходить, здесь появится их активность — входы, открытые темы и результаты тестов.</p></div> :
       <>
         <div className="cc-adm-two">
@@ -2434,4 +2514,38 @@ html,body{margin:0;padding:0;}
   .cc-mcta{display:block;}
   .cc-fi{opacity:.10!important;}
 }
+/* ===== menu + modal oynalar (qo'shimcha) ===== */
+.cc-menu-wrap{position:relative;display:flex;}
+.cc-menu-back{position:fixed;inset:0;z-index:40;}
+.cc-menu{position:absolute;top:48px;right:0;z-index:41;min-width:238px;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:var(--shadow-lg);animation:ccpop .16s ease;}
+.cc-menu-i{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;border-radius:10px;padding:11px 12px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;font-family:var(--sans);text-align:left;transition:.13s;}
+.cc-menu-i:hover{background:var(--surf2);color:var(--teal);}
+.cc-menu-i svg{color:var(--mut);flex:none;}
+.cc-menu-i:hover svg{color:var(--teal);}
+.cc-mov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,11,10,.55);backdrop-filter:blur(3px);animation:ccfade .18s ease;}
+.cc-mcard{position:relative;width:100%;max-width:436px;background:var(--surf);border:1px solid var(--line);border-radius:22px;padding:28px 26px;box-shadow:var(--shadow-lg);animation:ccpop .22s ease;max-height:88vh;overflow:auto;}
+.cc-mx{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:9px;background:var(--surf2);border:1px solid var(--line);color:var(--mut);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.13s;}
+.cc-mx:hover{color:var(--red);border-color:var(--red);}
+.cc-mhead{display:flex;align-items:center;gap:13px;margin-bottom:18px;}
+.cc-avatar.lg{width:48px;height:48px;border-radius:14px;font-size:20px;}
+.cc-mtitle{font-family:var(--serif);font-size:21px;font-weight:600;color:var(--ink);letter-spacing:-.01em;}
+.cc-msub{font-size:13px;color:var(--ink2);line-height:1.55;}
+.cc-mlabel{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 7px 2px;}
+.cc-mrow{display:flex;gap:10px;margin-top:6px;}
+.cc-mta{width:100%;min-height:122px;resize:vertical;background:var(--surf2);border:1.5px solid var(--line);border-radius:13px;padding:13px 15px;font-size:14.5px;font-family:var(--sans);color:var(--ink);margin-bottom:13px;line-height:1.55;box-sizing:border-box;}
+.cc-mta:focus{outline:none;border-color:var(--teal);background:var(--surf);}
+.cc-mok{text-align:center;padding:6px 4px 2px;}
+.cc-mok-ic{display:flex;width:60px;height:60px;margin:0 auto 14px;align-items:center;justify-content:center;border-radius:50%;background:var(--greenT);color:var(--green);}
+.cc-rlist{display:flex;flex-direction:column;gap:8px;max-height:58vh;overflow:auto;}
+.cc-ritem{display:flex;align-items:center;gap:12px;background:var(--surf2);border:1px solid var(--line);border-radius:13px;padding:11px 13px;cursor:pointer;font-family:var(--sans);text-align:left;transition:.14s;color:var(--ink);}
+.cc-ritem:hover{border-color:var(--teal);transform:translateY(-1px);}
+.cc-rico{display:flex;width:36px;height:36px;flex:none;align-items:center;justify-content:center;border-radius:10px;background:var(--grad);color:#fff;}
+.cc-rmid{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.cc-rtitle{font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cc-rmeta{font-size:11.5px;color:var(--mut);font-weight:500;}
+.cc-rnew{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--grad);border-radius:6px;padding:3px 7px;flex:none;}
+.cc-ritem>svg{color:var(--mut);flex:none;}
+.cc-fbsec{margin:18px 0 4px;}
+@keyframes ccfade{from{opacity:0}to{opacity:1}}
+@keyframes ccpop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
 `;
