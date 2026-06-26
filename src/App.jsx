@@ -1098,6 +1098,14 @@ export default function App(){
   useEffect(()=>{ try{ const t=localStorage.getItem(TKEY); if(t==="dark"||t==="light") setTheme(t);
     const u=localStorage.getItem(UKEY); if(u){ try{ setUser(JSON.parse(u)); }catch{} } }catch{} },[]);
   const visitSent = useRef(false);
+  const scrollbarRef = useRef(null);
+  useEffect(()=>{
+    const onScroll=()=>{ const h=document.documentElement; const max=h.scrollHeight-h.clientHeight; const p=max>0?Math.min(1,Math.max(0,h.scrollTop/max)):0; if(scrollbarRef.current) scrollbarRef.current.style.transform="scaleX("+p+")"; };
+    window.addEventListener("scroll",onScroll,{passive:true});
+    window.addEventListener("resize",onScroll,{passive:true});
+    onScroll();
+    return ()=>{ window.removeEventListener("scroll",onScroll); window.removeEventListener("resize",onScroll); };
+  },[]);
   useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
   useEffect(()=>{ try{ const bg = theme==="dark" ? "#0A1022" : "#EBEFF7"; document.documentElement.style.background=bg; document.body.style.background=bg; document.body.style.margin="0"; }catch{} },[theme]);
   useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
@@ -1145,6 +1153,7 @@ export default function App(){
   return(<>
     <style>{CSS}</style>
     <div className={rootCls}>
+      <div className="cc-scrollbar" ref={scrollbarRef} aria-hidden="true"/>
       <header className="cc-top">
         <button className="cc-brand" onClick={()=>setView("home")}>
           <span className="cc-brand-m abco-logo">abco</span>
@@ -1980,6 +1989,7 @@ html,body{margin:0;padding:0;}
 .cc-top-r{display:flex;align-items:center;gap:9px;flex:0 0 auto;position:relative;}
 .cc-burger{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:13px;background:var(--surf);border:1px solid var(--line);color:var(--ink);cursor:pointer;box-shadow:var(--shadow);transition:.16s;}
 .cc-burger:hover{border-color:var(--teal);color:var(--teal);transform:translateY(-1px);}
+.cc-scrollbar{position:fixed;top:0;left:0;right:0;height:3px;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--teal),var(--sky));z-index:90;pointer-events:none;transition:transform .1s linear;}
 .cc-menu-head{display:flex;align-items:center;gap:11px;padding:9px 10px 11px;border-bottom:1px solid var(--line);margin-bottom:5px;}
 .cc-menu-hi{display:flex;flex-direction:column;line-height:1.25;}
 .cc-menu-hi b{font-size:14px;font-weight:700;color:var(--ink);}
