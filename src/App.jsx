@@ -2553,6 +2553,14 @@ html,body{margin:0;padding:0;}
 .ccx .wide{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:var(--radius);background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);cursor:pointer;transition:transform .12s ease,box-shadow .25s ease,border-color .25s ease;transform-style:preserve-3d;}
 .ccx .wide:hover{transform:translateY(-3px);border-color:var(--line2);}
 .ccx .wide .wic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;flex-shrink:0;}
+/* 3D glossy material — ikonka plitkalari (yorug'lik + bevel + soya + hover burilish) */
+.ccx .stat .ic,.ccx .wide .wic,.ccx .ai .aic{position:relative;overflow:hidden;}
+.ccx .stat .ic > svg,.ccx .wide .wic > svg,.ccx .ai .aic > svg{position:relative;z-index:1;}
+.ccx .stat .ic::after,.ccx .wide .wic::after,.ccx .ai .aic::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(157deg,rgba(255,255,255,.45),transparent 54%);z-index:0;pointer-events:none;}
+.ccx .stat .ic,.ccx .wide .wic{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),inset 0 -3px 7px rgba(20,30,60,.10),0 8px 15px -7px rgba(20,30,60,.4);transition:transform .18s cubic-bezier(.34,1.4,.4,1),box-shadow .25s ease;}
+.ccx .ai .aic{box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -4px 9px rgba(120,45,0,.3),0 12px 26px -8px rgba(227,122,29,.7);transition:transform .2s cubic-bezier(.34,1.4,.4,1);}
+.ccx .stat:hover .ic,.ccx .wide:hover .wic{transform:translateY(-2px) scale(1.07) rotate(-4deg);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55),0 13px 22px -8px rgba(20,30,60,.5);}
+.ccx .ai:hover .aic{transform:rotate(-7deg) scale(1.06);}
 .ccx .wide h4{font-family:'Golos Text',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px;color:var(--text);}
 .ccx .wide p{font-size:13px;color:var(--muted);line-height:1.4;}
 .ccx .wide .wgo{margin-left:auto;color:var(--muted);display:flex;} .ccx .wide:hover .wgo{color:var(--text);}
