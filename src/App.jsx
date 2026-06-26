@@ -1347,9 +1347,9 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
           </div>
         </div>
         <div className="ring-card">
-          <span className="abco-pill p1">abco</span>
-          <span className="abco-pill p2">abco</span>
-          <span className="abco-pill p3">abco</span>
+          <img src="/3d/coin.webp" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/chart.webp" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/scale.webp" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
           <div className="ring">
             <svg width="170" height="170" viewBox="0 0 170 170">
               <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
@@ -2424,10 +2424,10 @@ html,body{margin:0;padding:0;}
 .ccx .hero h2 .grad{background:linear-gradient(100deg,#C2611A,#F0993F 25%,#FFB570 50%,#F0993F 75%,#C2611A);background-size:220% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:ccshimmer 4.5s linear infinite;}
 @keyframes ccshimmer{to{background-position:220% center;}}
 /* suzuvchi "abco" pillalar */
-.ccx .ring-card .abco-pill{position:absolute;display:inline-flex;align-items:center;padding:5px 13px;border-radius:999px;border:2px solid var(--sky);color:var(--teal);font-weight:800;font-size:13px;letter-spacing:-.04em;background:var(--surf);box-shadow:var(--shadow);z-index:3;pointer-events:none;}
-.ccx .ring-card .abco-pill.p1{top:-8px;left:-6px;animation:ccfloatp 6s ease-in-out infinite;}
-.ccx .ring-card .abco-pill.p2{bottom:14px;right:-14px;font-size:11px;animation:ccfloatp 7.5s ease-in-out infinite reverse;}
-.ccx .ring-card .abco-pill.p3{top:44%;right:-26px;font-size:12px;animation:ccfloatp 8.5s ease-in-out infinite;}
+.ccx .ring-card .abco-3d{position:absolute;width:62px;height:62px;object-fit:contain;z-index:3;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(20,30,60,.3));}
+.ccx .ring-card .abco-3d.p1{top:-18px;left:-22px;width:66px;height:66px;animation:ccfloatp 6s ease-in-out infinite;}
+.ccx .ring-card .abco-3d.p2{bottom:6px;right:-26px;width:58px;height:58px;animation:ccfloatp 7.5s ease-in-out infinite reverse;}
+.ccx .ring-card .abco-3d.p3{top:46%;right:-34px;width:54px;height:54px;animation:ccfloatp 8.5s ease-in-out infinite;}
 @keyframes ccfloatp{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-13px) rotate(3deg);}}
 /* sertifikat marquee */
 .ccx .abco-marquee-wrap{margin-top:16px;display:flex;align-items:center;gap:18px;border-radius:var(--radius-sm);padding:14px 18px;background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;}
