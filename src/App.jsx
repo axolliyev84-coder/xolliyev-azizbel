@@ -1348,6 +1348,7 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
         </div>
         <div className="ring-card">
           <img src="/3d/coin.webp" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/cap.webp" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
           <img src="/3d/chart.webp" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
           <img src="/3d/scale.webp" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
           <div className="ring">
@@ -2425,9 +2426,10 @@ html,body{margin:0;padding:0;}
 @keyframes ccshimmer{to{background-position:220% center;}}
 /* suzuvchi "abco" pillalar */
 .ccx .ring-card .abco-3d{position:absolute;width:62px;height:62px;object-fit:contain;z-index:3;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(20,30,60,.3));}
-.ccx .ring-card .abco-3d.p1{top:-18px;left:-22px;width:66px;height:66px;animation:ccfloatp 6s ease-in-out infinite;}
-.ccx .ring-card .abco-3d.p2{bottom:6px;right:-26px;width:58px;height:58px;animation:ccfloatp 7.5s ease-in-out infinite reverse;}
-.ccx .ring-card .abco-3d.p3{top:46%;right:-34px;width:54px;height:54px;animation:ccfloatp 8.5s ease-in-out infinite;}
+.ccx .ring-card .abco-3d.p1{top:-22px;left:-26px;width:64px;height:64px;animation:ccfloatp 6s ease-in-out infinite;}
+.ccx .ring-card .abco-3d.p4{top:-26px;right:-22px;width:60px;height:60px;animation:ccfloatp 7s ease-in-out infinite reverse;}
+.ccx .ring-card .abco-3d.p2{bottom:-8px;left:-22px;width:56px;height:56px;animation:ccfloatp 8s ease-in-out infinite;}
+.ccx .ring-card .abco-3d.p3{bottom:-12px;right:-28px;width:58px;height:58px;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
 @keyframes ccfloatp{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-13px) rotate(3deg);}}
 /* sertifikat marquee */
 .ccx .abco-marquee-wrap{margin-top:16px;display:flex;align-items:center;gap:18px;border-radius:var(--radius-sm);padding:14px 18px;background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;}
