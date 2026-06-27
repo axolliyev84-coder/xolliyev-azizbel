@@ -1394,11 +1394,11 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
           </div>
         </div>
         <div className="ring-card">
-          <img src="/3d/coin.webp?v=6" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/cap.webp?v=6" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/chart.webp?v=6" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/scale.webp?v=6" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
           <div className="ring">
+            <img src="/3d/coin.webp?v=6" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/cap.webp?v=6" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/chart.webp?v=6" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/scale.webp?v=6" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
             <svg width="170" height="170" viewBox="0 0 170 170">
               <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
               <circle id="ccringp" cx="85" cy="85" r="74" fill="none" stroke="url(#ccg)" strokeWidth="12" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC}/>
@@ -2475,10 +2475,10 @@ html,body{margin:0;padding:0;}
 @keyframes ccshimmer{to{background-position:220% center;}}
 /* suzuvchi "abco" pillalar */
 .ccx .ring-card .abco-3d{position:absolute;width:62px;height:62px;object-fit:contain;z-index:3;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(20,30,60,.3));}
-.ccx .ring-card .abco-3d.p1{top:-16px;left:-6px;width:62px;height:62px;animation:ccfloatp 6s ease-in-out infinite;}
-.ccx .ring-card .abco-3d.p4{top:-18px;right:-6px;width:58px;height:58px;animation:ccfloatp 7s ease-in-out infinite reverse;}
-.ccx .ring-card .abco-3d.p2{bottom:-4px;left:-2px;width:54px;height:54px;animation:ccfloatp 8s ease-in-out infinite;}
-.ccx .ring-card .abco-3d.p3{bottom:-8px;right:-10px;width:56px;height:56px;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
+.ccx .ring .abco-3d.p1{top:-18px;left:-18px;width:52px;height:52px;animation:ccfloatp 6s ease-in-out infinite;}
+.ccx .ring .abco-3d.p4{top:-18px;right:-18px;width:52px;height:52px;animation:ccfloatp 7s ease-in-out infinite reverse;}
+.ccx .ring .abco-3d.p2{bottom:-12px;left:-14px;width:48px;height:48px;animation:ccfloatp 8s ease-in-out infinite;}
+.ccx .ring .abco-3d.p3{bottom:-12px;right:-14px;width:50px;height:50px;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
 @keyframes ccfloatp{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-13px) rotate(3deg);}}
 /* 3D scroll showcase (framer-motion) */
 .ccx .ss{max-width:1060px;margin:58px auto 10px;padding:0 4px;}
