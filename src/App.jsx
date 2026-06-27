@@ -1347,10 +1347,10 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
           </div>
         </div>
         <div className="ring-card">
-          <img src="/3d/coin.webp" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/cap.webp" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/chart.webp" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/scale.webp" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/coin.webp?v=3" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/cap.webp?v=3" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/chart.webp?v=3" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/scale.webp?v=3" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
           <div className="ring">
             <svg width="170" height="170" viewBox="0 0 170 170">
               <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
