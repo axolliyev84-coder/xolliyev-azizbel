@@ -1292,10 +1292,10 @@ function ScrollShowcase(){
               </div>
               <div className="ss-side">
                 <div className="ss-ring"><span>51%</span><small>прогресс</small></div>
-                <img src="/3d/coin.webp?v=6" className="ss-ic s1" alt="" aria-hidden="true" loading="lazy"/>
-                <img src="/3d/cap.webp?v=6" className="ss-ic s2" alt="" aria-hidden="true" loading="lazy"/>
-                <img src="/3d/chart.webp?v=6" className="ss-ic s3" alt="" aria-hidden="true" loading="lazy"/>
-                <img src="/3d/scale.webp?v=6" className="ss-ic s4" alt="" aria-hidden="true" loading="lazy"/>
+                <span className="ss-b3d s1" aria-hidden="true">abco</span>
+                <span className="ss-b3d s2" aria-hidden="true">abco</span>
+                <span className="ss-b3d s3" aria-hidden="true">abco</span>
+                <span className="ss-b3d s4" aria-hidden="true">abco</span>
               </div>
             </div>
           </div>
@@ -2489,7 +2489,8 @@ html,body{margin:0;padding:0;}
 .ccx .ss-stage{perspective:1300px;}
 .ccx .ss-card{transform-style:preserve-3d;transform-origin:50% 0%;border-radius:26px;padding:11px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.02));border:1px solid var(--frame);box-shadow:0 42px 92px -32px rgba(12,20,45,.62),0 14px 32px -14px rgba(12,20,45,.4);will-change:transform;}
 .ccx .ss-screen{position:relative;overflow:hidden;border-radius:18px;min-height:300px;background:linear-gradient(155deg,#27407A 0%,#172A54 56%,#0E1A37 100%);}
-.ccx .ss-screen::before{content:"";position:absolute;inset:0;background:radial-gradient(62% 80% at 86% 6%,rgba(227,122,29,.22),transparent 60%);pointer-events:none;}
+.ccx .ss-screen::before{content:"";position:absolute;inset:0;background:radial-gradient(62% 80% at 86% 6%,rgba(227,122,29,.22),transparent 60%);pointer-events:none;animation:ssGlow 5.5s ease-in-out infinite;}
+@keyframes ssGlow{0%,100%{opacity:.65;}50%{opacity:1;}}
 .ccx .ss-bar{position:relative;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
 .ccx .ss-logo{font:900 15px/1 'Golos Text',sans-serif;letter-spacing:.06em;color:#F4A24A;border:2px solid rgba(244,162,74,.45);border-radius:999px;padding:5px 13px;}
 .ccx .ss-win{display:inline-flex;gap:6px;}
@@ -2506,15 +2507,28 @@ html,body{margin:0;padding:0;}
 .ccx .ss-row span:last-child{margin-left:auto;color:#8FA2CC;font-size:12.5px;}
 .ccx .ss-rdot{width:8px;height:8px;border-radius:50%;background:#F2913A;box-shadow:0 0 10px rgba(242,145,58,.7);flex:none;}
 .ccx .ss-side{position:relative;display:flex;align-items:center;justify-content:center;min-height:204px;}
-.ccx .ss-ring{position:relative;width:150px;height:150px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:conic-gradient(#F2913A 0% 51%,rgba(255,255,255,.13) 51% 100%);box-shadow:0 14px 40px -10px rgba(242,145,58,.4);}
+.ccx .ss-ring{position:relative;width:150px;height:150px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:conic-gradient(#F2913A 0% 51%,rgba(255,255,255,.13) 51% 100%);box-shadow:0 14px 40px -10px rgba(242,145,58,.4);animation:ssRingPulse 3.6s ease-in-out infinite;}
+@keyframes ssRingPulse{0%,100%{box-shadow:0 14px 40px -10px rgba(242,145,58,.35);}50%{box-shadow:0 16px 54px -8px rgba(242,145,58,.6);}}
+.ccx .ss-ring span{animation:ssNum 3.6s ease-in-out infinite;}
+@keyframes ssNum{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+.ccx .ss-row .ss-rdot{animation:ssDot 2.4s ease-in-out infinite;}
+.ccx .ss-row:nth-child(2) .ss-rdot{animation-delay:.5s;}
+.ccx .ss-row:nth-child(3) .ss-rdot{animation-delay:1s;}
+@keyframes ssDot{0%,100%{box-shadow:0 0 8px rgba(242,145,58,.6);transform:scale(1);}50%{box-shadow:0 0 16px rgba(242,145,58,1);transform:scale(1.25);}}
 .ccx .ss-ring::before{content:"";position:absolute;inset:13px;border-radius:50%;background:#15244C;}
 .ccx .ss-ring span{position:relative;font:800 31px/1 'Golos Text',sans-serif;color:#fff;}
 .ccx .ss-ring small{position:relative;font:500 11px/1 'Golos Text',sans-serif;color:#9DB0D8;margin-top:5px;}
-.ccx .ss-ic{position:absolute;width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.42));z-index:3;}
-.ccx .ss-ic.s1{top:-8px;left:0;animation:ccfloatp 6s ease-in-out infinite;}
-.ccx .ss-ic.s2{top:-12px;right:-2px;width:46px;height:46px;animation:ccfloatp 7s ease-in-out infinite reverse;}
-.ccx .ss-ic.s3{bottom:-6px;left:4px;width:46px;height:46px;animation:ccfloatp 8s ease-in-out infinite;}
-.ccx .ss-ic.s4{bottom:-10px;right:0;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
+/* suzuvchi 3D abco belgilar (CSS chuqurlik + bevel + porlash) */
+.ccx .ss-b3d{position:absolute;z-index:3;display:inline-flex;align-items:center;justify-content:center;font:900 14px/1 'Golos Text',sans-serif;letter-spacing:.05em;color:#F6A24E;background:linear-gradient(152deg,#34528F 0%,#1C2F5C 56%,#12224A 100%);border:2px solid rgba(244,162,74,.55);border-radius:999px;padding:9px 15px;overflow:hidden;text-shadow:0 1px 1px rgba(0,0,0,.4);box-shadow:0 3px 0 #101D3E,0 6px 0 #0B1530,0 12px 22px rgba(5,10,28,.5),inset 0 1.5px 0 rgba(255,255,255,.2),inset 0 -3px 7px rgba(0,0,0,.32);}
+.ccx .ss-b3d::after{content:"";position:absolute;top:0;left:-70%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);animation:b3dshine 3.4s ease-in-out infinite;}
+@keyframes b3dshine{0%,58%{left:-70%;}100%{left:140%;}}
+.ccx .ss-b3d.s1{top:2px;left:-10px;font-size:14px;animation:ccfloatp 6s ease-in-out infinite;}
+.ccx .ss-b3d.s2{top:-12px;right:-10px;font-size:12px;padding:8px 13px;animation:ccfloatp 7s ease-in-out infinite reverse;}
+.ccx .ss-b3d.s3{bottom:16px;left:-12px;font-size:12px;padding:8px 13px;animation:ccfloatp 8s ease-in-out infinite;}
+.ccx .ss-b3d.s4{bottom:-8px;right:-6px;font-size:14px;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
+.ccx .ss-b3d.s2::after{animation-delay:.6s;}
+.ccx .ss-b3d.s3::after{animation-delay:1.2s;}
+.ccx .ss-b3d.s4::after{animation-delay:1.8s;}
 @media(max-width:768px){
   .ccx .ss{margin:42px auto 4px;}
   .ccx .ss-grid{grid-template-columns:1fr;gap:4px;padding:20px;}
@@ -2523,7 +2537,7 @@ html,body{margin:0;padding:0;}
   .ccx .ss-ring span{font-size:27px;}
 }
 @media(prefers-reduced-motion:reduce){
-  .ccx .ss-ic{animation:none;}
+  .ccx .ss-b3d,.ccx .ss-b3d::after,.ccx .ss-ring,.ccx .ss-ring span,.ccx .ss-row .ss-rdot,.ccx .ss-screen::before{animation:none;}
 }
 /* sertifikat marquee */
 .ccx .abco-marquee-wrap{margin-top:16px;display:flex;align-items:center;gap:18px;border-radius:var(--radius-sm);padding:14px 18px;background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;}
