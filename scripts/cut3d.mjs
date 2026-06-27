@@ -1,6 +1,8 @@
-// 3D ikonkalarning kulrang studiya fonini olib tashlaydi.
-// Qoida: neytral kulrang (past to'yinganlik, o'rta yorug'lik) = FON -> shaffof.
-// Rangli ikonka (yuqori to'yinganlik), oq porlash (juda yorug') va to'q chiziqlar saqlanadi.
+// 3D ikonkalarning studiya fonini olib tashlaydi.
+// 1) Chetdan flood-fill: ULASHGAN fon (kulrang + oq + soya) -> shaffof; to'yingan ikonka chetida to'xtaydi.
+// 2) Eng katta ulashgan noshaffof qism = IKONKA; qolgan barcha mayda nuqtalar o'chiriladi.
+// 3) bbox bo'yicha qirqib 256 ga sig'diramiz.
+// Tekshiruv sharp bilan (Read displayiga emas) — u opaque-ni ham checkerboardda ko'rsatadi.
 import sharp from "sharp";
 import https from "https";
 import fs from "fs";
@@ -19,26 +21,75 @@ function dl(url, out) {
   });
 }
 
-const SAT_MAX = 40;   // shundan past to'yinganlik = neytral kulrang
-const LUM_LO = 55;    // bundan qorong'i = saqlanadi (to'q chiziqlar)
-const LUM_HI = 242;   // bundan yorug' = saqlanadi (oq porlash)
+const SAT_MAX = 72;
+const STEP = 34;
 
 for (const [name, url] of Object.entries(ICONS)) {
   const tmp = `public/3d/_${name}.png`;
   await dl(url, tmp);
   const { data, info } = await sharp(tmp).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const ch = info.channels;
-  let cut = 0;
-  for (let i = 0; i < data.length; i += ch) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    if (mx - mn < SAT_MAX && mx > LUM_LO && mx < LUM_HI) { data[i + 3] = 0; cut++; }
+  const W = info.width, H = info.height, ch = info.channels, N = W * H;
+  const sat = (p) => { const r = data[p * ch], g = data[p * ch + 1], b = data[p * ch + 2]; return Math.max(r, g, b) - Math.min(r, g, b); };
+  const diff = (p, q) => Math.abs(data[p * ch] - data[q * ch]) + Math.abs(data[p * ch + 1] - data[q * ch + 1]) + Math.abs(data[p * ch + 2] - data[q * ch + 2]);
+
+  // 1) flood-fill fon -> alpha 0
+  const visited = new Uint8Array(N);
+  const queue = new Int32Array(N);
+  let tail = 0, head = 0;
+  const seed = (p) => { if (!visited[p] && sat(p) < SAT_MAX) { visited[p] = 1; queue[tail++] = p; } };
+  for (let x = 0; x < W; x++) { seed(x); seed((H - 1) * W + x); }
+  for (let y = 0; y < H; y++) { seed(y * W); seed(y * W + (W - 1)); }
+  while (head < tail) {
+    const p = queue[head++];
+    data[p * ch + 3] = 0;
+    const x = p % W, y = (p / W) | 0;
+    const tryN = (q) => { if (!visited[q] && sat(q) < SAT_MAX && diff(p, q) < STEP) { visited[q] = 1; queue[tail++] = q; } };
+    if (x > 0) tryN(p - 1); if (x < W - 1) tryN(p + 1);
+    if (y > 0) tryN(p - W); if (y < H - 1) tryN(p + W);
   }
-  await sharp(data, { raw: { width: info.width, height: info.height, channels: ch } })
+
+  // 1b) tuzoqqa tushgan neytral-kulrang halolarni global tozalash (oq porlash + to'q chiziqlar saqlanadi)
+  for (let p = 0; p < N; p++) {
+    if (data[p * ch + 3] === 0) continue;
+    const r = data[p * ch], g = data[p * ch + 1], b = data[p * ch + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mx - mn < 30 && mx > 70 && mx < 238) data[p * ch + 3] = 0;
+  }
+
+  // 2) eng katta ulashgan noshaffof komponentni topamiz
+  const lab = new Int32Array(N).fill(-1);
+  let best = [], bestSize = 0;
+  const q2 = new Int32Array(N);
+  for (let s = 0; s < N; s++) {
+    if (lab[s] !== -1 || data[s * ch + 3] === 0) continue;
+    let t = 0, h = 0; q2[t++] = s; lab[s] = 1; const comp = [s];
+    while (h < t) {
+      const p = q2[h++]; const x = p % W, y = (p / W) | 0;
+      const tryN = (q) => { if (lab[q] === -1 && data[q * ch + 3] !== 0) { lab[q] = 1; q2[t++] = q; comp.push(q); } };
+      if (x > 0) tryN(p - 1); if (x < W - 1) tryN(p + 1);
+      if (y > 0) tryN(p - W); if (y < H - 1) tryN(p + W);
+    }
+    if (comp.length > bestSize) { bestSize = comp.length; best = comp; }
+  }
+  // ikonka pikselllarini belgilaymiz; qolganini shaffof
+  const keep = new Uint8Array(N);
+  for (const p of best) keep[p] = 1;
+  for (let p = 0; p < N; p++) {
+    if (!keep[p]) { data[p * ch + 3] = 0; }
+    if (data[p * ch + 3] === 0) { data[p * ch] = 0; data[p * ch + 1] = 0; data[p * ch + 2] = 0; }
+  }
+
+  await sharp(data, { raw: { width: W, height: H, channels: ch } })
+    .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 8 })
     .resize(256, 256, { fit: "inside" })
     .webp({ quality: 92, alphaQuality: 100 })
     .toFile(`public/3d/${name}.webp`);
   fs.unlinkSync(tmp);
-  console.log("cut", name, "transparent%=" + Math.round(100 * cut / (info.width * info.height)));
+
+  const { data: vd, info: vi } = await sharp(`public/3d/${name}.webp`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const a = (x, y) => vd[(y * vi.width + x) * vi.channels + 3];
+  console.log("cut", name, "size=" + vi.width + "x" + vi.height,
+    "corners[TL,TR,BL,BR]=", [a(2, 2), a(vi.width - 3, 2), a(2, vi.height - 3), a(vi.width - 3, vi.height - 3)].join(","),
+    "KB=" + Math.round(fs.statSync(`public/3d/${name}.webp`).size / 1024));
 }
 console.log("done");

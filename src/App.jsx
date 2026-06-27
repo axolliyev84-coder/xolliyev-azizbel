@@ -8,6 +8,7 @@ import {
   Landmark, Scale, Coins, Percent, Receipt, TrendingUp, Building2, Trash2,
   Menu, User, Clock, MessageSquare
 } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 /* ===================== STORAGE (localStorage) ===================== */
 const PKEY = "mscfo_course_v1";
@@ -1258,6 +1259,52 @@ function tiltMove(e){ const el=e.currentTarget; const r=el.getBoundingClientRect
   el.style.setProperty('--mx',(px*100).toFixed(1)+'%'); el.style.setProperty('--my',(py*100).toFixed(1)+'%'); }
 function tiltLeave(e){ e.currentTarget.style.transform=''; }
 
+/* ---------- 3D scroll showcase (framer-motion) ---------- */
+function ScrollShowcase(){
+  const ref=useRef(null);
+  const {scrollYProgress}=useScroll({target:ref,offset:["start end","center center"]});
+  const [mob,setMob]=useState(false);
+  useEffect(()=>{const c=()=>setMob(window.innerWidth<=768);c();window.addEventListener("resize",c);return()=>window.removeEventListener("resize",c);},[]);
+  const rotate=useTransform(scrollYProgress,[0,1],[16,0]);
+  const scale=useTransform(scrollYProgress,[0,1],mob?[0.92,1]:[1.04,1]);
+  const ty=useTransform(scrollYProgress,[0,1],[44,0]);
+  return(
+    <section className="ss" ref={ref}>
+      <motion.div className="ss-head" style={{y:ty}}>
+        <span className="ss-eyebrow"><Sparkles size={13}/> Один курс — всё включено</span>
+        <h3>Всё для подготовки <span className="grad">в одном месте</span></h3>
+        <p>Конспекты, карточки, разобранные задачи, тесты и ИИ-репетитор — в одном приложении.</p>
+      </motion.div>
+      <div className="ss-stage">
+        <motion.div className="ss-card" style={{rotateX:rotate,scale}}>
+          <div className="ss-screen">
+            <div className="ss-bar"><span className="ss-logo">abco</span><span className="ss-win"><i/><i/><i/></span></div>
+            <div className="ss-grid">
+              <div className="ss-main">
+                <span className="ss-tag">КУРС МСФО · ABCO</span>
+                <h4>Осваивайте <span className="grad">МСФО</span> каждый день</h4>
+                <div className="ss-chips">{["IFRS 15","IAS 16","IAS 23","IFRS 9","IAS 2"].map((c,i)=><span key={i}>{c}</span>)}</div>
+                <div className="ss-rows">
+                  {[["Конспекты","12 тем"],["Карточки","240+ шт"],["Тесты","с разбором"]].map((r,i)=>(
+                    <div className="ss-row" key={i}><span className="ss-rdot"/><b>{r[0]}</b><span>{r[1]}</span></div>
+                  ))}
+                </div>
+              </div>
+              <div className="ss-side">
+                <div className="ss-ring"><span>51%</span><small>прогресс</small></div>
+                <img src="/3d/coin.webp?v=6" className="ss-ic s1" alt="" aria-hidden="true" loading="lazy"/>
+                <img src="/3d/cap.webp?v=6" className="ss-ic s2" alt="" aria-hidden="true" loading="lazy"/>
+                <img src="/3d/chart.webp?v=6" className="ss-ic s3" alt="" aria-hidden="true" loading="lazy"/>
+                <img src="/3d/scale.webp?v=6" className="ss-ic s4" alt="" aria-hidden="true" loading="lazy"/>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function HomeView({prog,tp,user,open,goHw,goExam}){
   const ref=useRef(null);
   const COL=["em","sky","amb","vio"];
@@ -1347,10 +1394,10 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
           </div>
         </div>
         <div className="ring-card">
-          <img src="/3d/coin.webp?v=3" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/cap.webp?v=3" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/chart.webp?v=3" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
-          <img src="/3d/scale.webp?v=3" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/coin.webp?v=6" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/cap.webp?v=6" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/chart.webp?v=6" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
+          <img src="/3d/scale.webp?v=6" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
           <div className="ring">
             <svg width="170" height="170" viewBox="0 0 170 170">
               <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
@@ -1384,6 +1431,8 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
         </div>
         <div className="ago"><button className="btn btn-primary" onClick={(e)=>{e.stopPropagation();open(nextTopic,"tutor");}}>Спросить <ArrowRight size={18}/></button></div>
       </section>
+
+      <ScrollShowcase/>
 
       <div className="sec-head"><h3>Ваша статистика</h3></div>
       <section className="stats">
@@ -2426,11 +2475,56 @@ html,body{margin:0;padding:0;}
 @keyframes ccshimmer{to{background-position:220% center;}}
 /* suzuvchi "abco" pillalar */
 .ccx .ring-card .abco-3d{position:absolute;width:62px;height:62px;object-fit:contain;z-index:3;pointer-events:none;filter:drop-shadow(0 10px 16px rgba(20,30,60,.3));}
-.ccx .ring-card .abco-3d.p1{top:-22px;left:-26px;width:64px;height:64px;animation:ccfloatp 6s ease-in-out infinite;}
-.ccx .ring-card .abco-3d.p4{top:-26px;right:-22px;width:60px;height:60px;animation:ccfloatp 7s ease-in-out infinite reverse;}
-.ccx .ring-card .abco-3d.p2{bottom:-8px;left:-22px;width:56px;height:56px;animation:ccfloatp 8s ease-in-out infinite;}
-.ccx .ring-card .abco-3d.p3{bottom:-12px;right:-28px;width:58px;height:58px;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
+.ccx .ring-card .abco-3d.p1{top:-16px;left:-6px;width:62px;height:62px;animation:ccfloatp 6s ease-in-out infinite;}
+.ccx .ring-card .abco-3d.p4{top:-18px;right:-6px;width:58px;height:58px;animation:ccfloatp 7s ease-in-out infinite reverse;}
+.ccx .ring-card .abco-3d.p2{bottom:-4px;left:-2px;width:54px;height:54px;animation:ccfloatp 8s ease-in-out infinite;}
+.ccx .ring-card .abco-3d.p3{bottom:-8px;right:-10px;width:56px;height:56px;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
 @keyframes ccfloatp{0%,100%{transform:translateY(0) rotate(-3deg);}50%{transform:translateY(-13px) rotate(3deg);}}
+/* 3D scroll showcase (framer-motion) */
+.ccx .ss{max-width:1060px;margin:58px auto 10px;padding:0 4px;}
+.ccx .ss-head{text-align:center;max-width:640px;margin:0 auto 30px;will-change:transform;}
+.ccx .ss-eyebrow{display:inline-flex;align-items:center;gap:7px;font:700 12px/1 'Golos Text',sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);background:rgba(227,122,29,.12);border:1px solid rgba(227,122,29,.26);padding:7px 13px;border-radius:999px;margin-bottom:16px;}
+.ccx .ss-head h3{font:800 clamp(23px,3.8vw,37px)/1.12 'Golos Text',sans-serif;color:var(--text);margin:0 0 12px;letter-spacing:-.02em;}
+.ccx .ss-head p{font:400 15px/1.6 'Golos Text',sans-serif;color:var(--muted);margin:0;}
+.ccx .ss-stage{perspective:1300px;}
+.ccx .ss-card{transform-style:preserve-3d;transform-origin:50% 0%;border-radius:26px;padding:11px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.02));border:1px solid var(--frame);box-shadow:0 42px 92px -32px rgba(12,20,45,.62),0 14px 32px -14px rgba(12,20,45,.4);will-change:transform;}
+.ccx .ss-screen{position:relative;overflow:hidden;border-radius:18px;min-height:300px;background:linear-gradient(155deg,#27407A 0%,#172A54 56%,#0E1A37 100%);}
+.ccx .ss-screen::before{content:"";position:absolute;inset:0;background:radial-gradient(62% 80% at 86% 6%,rgba(227,122,29,.22),transparent 60%);pointer-events:none;}
+.ccx .ss-bar{position:relative;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
+.ccx .ss-logo{font:900 15px/1 'Golos Text',sans-serif;letter-spacing:.06em;color:#F4A24A;border:2px solid rgba(244,162,74,.45);border-radius:999px;padding:5px 13px;}
+.ccx .ss-win{display:inline-flex;gap:6px;}
+.ccx .ss-win i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.22);}
+.ccx .ss-win i:first-child{background:#F2913A;}
+.ccx .ss-grid{position:relative;display:grid;grid-template-columns:1.25fr .9fr;gap:18px;padding:24px 26px 28px;align-items:center;}
+.ccx .ss-tag{display:inline-block;font:700 11px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#9DB0D8;margin-bottom:12px;}
+.ccx .ss-main h4{font:800 clamp(19px,2.5vw,29px)/1.16 'Golos Text',sans-serif;color:#fff;margin:0 0 16px;letter-spacing:-.01em;}
+.ccx .ss-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.ccx .ss-chips span{font:600 12px/1 'JetBrains Mono',monospace;color:#DCE6FA;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 10px;}
+.ccx .ss-rows{display:flex;flex-direction:column;gap:10px;}
+.ccx .ss-row{display:flex;align-items:center;gap:10px;font:500 13.5px/1 'Golos Text',sans-serif;color:#C5D2EC;}
+.ccx .ss-row b{color:#fff;font-weight:700;}
+.ccx .ss-row span:last-child{margin-left:auto;color:#8FA2CC;font-size:12.5px;}
+.ccx .ss-rdot{width:8px;height:8px;border-radius:50%;background:#F2913A;box-shadow:0 0 10px rgba(242,145,58,.7);flex:none;}
+.ccx .ss-side{position:relative;display:flex;align-items:center;justify-content:center;min-height:204px;}
+.ccx .ss-ring{position:relative;width:150px;height:150px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:conic-gradient(#F2913A 0% 51%,rgba(255,255,255,.13) 51% 100%);box-shadow:0 14px 40px -10px rgba(242,145,58,.4);}
+.ccx .ss-ring::before{content:"";position:absolute;inset:13px;border-radius:50%;background:#15244C;}
+.ccx .ss-ring span{position:relative;font:800 31px/1 'Golos Text',sans-serif;color:#fff;}
+.ccx .ss-ring small{position:relative;font:500 11px/1 'Golos Text',sans-serif;color:#9DB0D8;margin-top:5px;}
+.ccx .ss-ic{position:absolute;width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.42));z-index:3;}
+.ccx .ss-ic.s1{top:-8px;left:0;animation:ccfloatp 6s ease-in-out infinite;}
+.ccx .ss-ic.s2{top:-12px;right:-2px;width:46px;height:46px;animation:ccfloatp 7s ease-in-out infinite reverse;}
+.ccx .ss-ic.s3{bottom:-6px;left:4px;width:46px;height:46px;animation:ccfloatp 8s ease-in-out infinite;}
+.ccx .ss-ic.s4{bottom:-10px;right:0;animation:ccfloatp 8.5s ease-in-out infinite reverse;}
+@media(max-width:768px){
+  .ccx .ss{margin:42px auto 4px;}
+  .ccx .ss-grid{grid-template-columns:1fr;gap:4px;padding:20px;}
+  .ccx .ss-side{min-height:172px;margin-top:10px;}
+  .ccx .ss-ring{width:130px;height:130px;}
+  .ccx .ss-ring span{font-size:27px;}
+}
+@media(prefers-reduced-motion:reduce){
+  .ccx .ss-ic{animation:none;}
+}
 /* sertifikat marquee */
 .ccx .abco-marquee-wrap{margin-top:16px;display:flex;align-items:center;gap:18px;border-radius:var(--radius-sm);padding:14px 18px;background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);overflow:hidden;}
 .ccx .abco-mq-label{flex:0 0 auto;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
