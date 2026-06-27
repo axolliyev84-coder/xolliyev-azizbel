@@ -56,9 +56,10 @@ for (const [name, url] of Object.entries(ICONS)) {
     if (mx - mn < 30 && mx > 70 && mx < 238) data[p * ch + 3] = 0;
   }
 
-  // 2) eng katta ulashgan noshaffof komponentni topamiz
+  // 2) barcha ulashgan qismlarni topamiz; YETARLICHA KATTALARINI saqlaymiz (chart ustun+strelka kabi
+  //    bir nechta ajralgan qism bo'lsa ham qoladi), faqat MAYDA nuqtalar (speckle) o'chadi
   const lab = new Int32Array(N).fill(-1);
-  let best = [], bestSize = 0;
+  const comps = [];
   const q2 = new Int32Array(N);
   for (let s = 0; s < N; s++) {
     if (lab[s] !== -1 || data[s * ch + 3] === 0) continue;
@@ -69,14 +70,32 @@ for (const [name, url] of Object.entries(ICONS)) {
       if (x > 0) tryN(p - 1); if (x < W - 1) tryN(p + 1);
       if (y > 0) tryN(p - W); if (y < H - 1) tryN(p + W);
     }
-    if (comp.length > bestSize) { bestSize = comp.length; best = comp; }
+    comps.push(comp);
   }
-  // ikonka pikselllarini belgilaymiz; qolganini shaffof
+  let maxSize = 0; for (const c of comps) if (c.length > maxSize) maxSize = c.length;
+  const TH = Math.max(220, maxSize * 0.05); // 220px yoki eng kattaning 5% — ikonka qismlari qoladi, nuqtalar o'chadi
   const keep = new Uint8Array(N);
-  for (const p of best) keep[p] = 1;
+  for (const c of comps) if (c.length >= TH) for (const p of c) keep[p] = 1;
   for (let p = 0; p < N; p++) {
     if (!keep[p]) { data[p * ch + 3] = 0; }
     if (data[p * ch + 3] === 0) { data[p * ch] = 0; data[p * ch + 1] = 0; data[p * ch + 2] = 0; }
+  }
+
+  // 3) chet de-fringe: tashqi kulrang/yarim-shaffof halqani peel qilish (qora fonda halo ko'rinmasin)
+  for (let it = 0; it < 2; it++) {
+    const rm = [];
+    for (let p = 0; p < N; p++) {
+      const aP = data[p * ch + 3];
+      if (aP === 0) continue;
+      const x = p % W, y = (p / W) | 0;
+      const isEdge = (x > 0 && data[(p - 1) * ch + 3] === 0) || (x < W - 1 && data[(p + 1) * ch + 3] === 0) ||
+        (y > 0 && data[(p - W) * ch + 3] === 0) || (y < H - 1 && data[(p + W) * ch + 3] === 0);
+      if (!isEdge) continue;
+      const r = data[p * ch], g = data[p * ch + 1], b = data[p * ch + 2];
+      const s = Math.max(r, g, b) - Math.min(r, g, b);
+      if (s < 55 || aP < 210) rm.push(p); // kulrang yoki yarim-shaffof chet -> olib tashlash
+    }
+    for (const p of rm) { data[p * ch + 3] = 0; data[p * ch] = 0; data[p * ch + 1] = 0; data[p * ch + 2] = 0; }
   }
 
   await sharp(data, { raw: { width: W, height: H, channels: ch } })

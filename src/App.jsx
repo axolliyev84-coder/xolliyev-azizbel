@@ -1107,7 +1107,7 @@ export default function App(){
     onScroll();
     return ()=>{ window.removeEventListener("scroll",onScroll); window.removeEventListener("resize",onScroll); };
   },[]);
-  useEffect(()=>{ try{ document.title="MCFO Kurs AI"; }catch{} },[]);
+  useEffect(()=>{ try{ document.title="ABCO Academy — курс МСФО"; }catch{} },[]);
   useEffect(()=>{ try{ const bg = theme==="dark" ? "#0A1022" : "#EBEFF7"; document.documentElement.style.background=bg; document.body.style.background=bg; document.body.style.margin="0"; }catch{} },[theme]);
   useEffect(()=>{ if(ready && user && !visitSent.current){ visitSent.current=true; recordActivity(); const s=progStats(prog); sendEvent({u:user.name,t:"login",d:"",cards:s.cards,avg:s.avg}); } },[ready,user]);
   useEffect(()=>{ window.scrollTo(0,0); },[view,topicId]);
@@ -1139,7 +1139,7 @@ export default function App(){
         <button className="cc-icon-btn cc-gate-th" onClick={toggleTheme} title="Сменить тему" aria-label="Сменить тему">{theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}</button>
         <div className="cc-gate-card">
           <div className="cc-gate-logo"><Sparkles size={28}/></div>
-          <h1 className="cc-gate-t">MCFO Kurs AI</h1>
+          <h1 className="cc-gate-t">ABCO Academy</h1>
           <p className="cc-gate-s">Интерактивный курс МСФО: теория, карточки, разобранные задачи, тесты и ИИ-репетитор. Войдите, чтобы начать — введите имя, и ваш прогресс сохранится.</p>
           <input className="cc-modal-in" placeholder="Ваше имя" value={nameDraft} maxLength={24} autoFocus
             onChange={e=>setNameDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
@@ -1158,7 +1158,7 @@ export default function App(){
       <header className="cc-top">
         <button className="cc-brand" onClick={()=>setView("home")}>
           <span className="cc-brand-m abco-logo">abco</span>
-          <span><span className="cc-brand-n">MCFO Kurs AI</span><span className="cc-brand-s">ИИ-репетитор · курс МСФО</span></span>
+          <span><span className="cc-brand-n">ABCO Academy</span><span className="cc-brand-s">MCFO курс · ИИ-репетитор</span></span>
         </button>
         <div className="cc-top-r">
           <div className="cc-menu-wrap">
@@ -1395,10 +1395,10 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
         </div>
         <div className="ring-card">
           <div className="ring">
-            <img src="/3d/coin.webp?v=6" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
-            <img src="/3d/cap.webp?v=6" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
-            <img src="/3d/chart.webp?v=6" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
-            <img src="/3d/scale.webp?v=6" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/coin.webp?v=7" className="abco-3d p1" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/cap.webp?v=7" className="abco-3d p4" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/chart.webp?v=7" className="abco-3d p2" alt="" aria-hidden="true" loading="lazy"/>
+            <img src="/3d/scale.webp?v=7" className="abco-3d p3" alt="" aria-hidden="true" loading="lazy"/>
             <svg width="170" height="170" viewBox="0 0 170 170">
               <circle className="rtrack" cx="85" cy="85" r="74" fill="none" strokeWidth="12"/>
               <circle id="ccringp" cx="85" cy="85" r="74" fill="none" stroke="url(#ccg)" strokeWidth="12" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC}/>
