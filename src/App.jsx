@@ -1443,8 +1443,12 @@ function tiltMove(e){ const el=e.currentTarget; const r=el.getBoundingClientRect
 function tiltLeave(e){ e.currentTarget.style.transform=''; }
 
 /* ---------- 3D scroll showcase (framer-motion) ---------- */
-function ScrollShowcase(){
+function ScrollShowcase({pct=0}){
   const ref=useRef(null);
+  const nTopics=TOPICS.length;
+  const nCards=TOPICS.reduce((s,t)=>s+t.cards.length,0);
+  const nQuiz=TOPICS.reduce((s,t)=>s+t.quiz.length,0);
+  const codes=TOPICS.map(t=>t.code).filter(c=>/^(IAS|IFRS)/i.test(c));
   const {scrollYProgress}=useScroll({target:ref,offset:["start end","center center"]});
   const [mob,setMob]=useState(false);
   useEffect(()=>{const c=()=>setMob(window.innerWidth<=768);c();window.addEventListener("resize",c);return()=>window.removeEventListener("resize",c);},[]);
@@ -1466,15 +1470,15 @@ function ScrollShowcase(){
               <div className="ss-main">
                 <span className="ss-tag">КУРС МСФО · ABCO</span>
                 <h4>Осваивайте <span className="grad">МСФО</span> каждый день</h4>
-                <div className="ss-chips">{["IFRS 15","IAS 16","IAS 23","IFRS 9","IAS 2"].map((c,i)=><span key={i}>{c}</span>)}</div>
+                <div className="ss-chips">{codes.map((c,i)=><span key={i}>{c}</span>)}</div>
                 <div className="ss-rows">
-                  {[["Конспекты","12 тем"],["Карточки","240+ шт"],["Тесты","с разбором"]].map((r,i)=>(
+                  {[["Конспекты",nTopics+" тем"],["Карточки",nCards+" шт"],["Тесты",nQuiz+" вопросов"]].map((r,i)=>(
                     <div className="ss-row" key={i}><span className="ss-rdot"/><b>{r[0]}</b><span>{r[1]}</span></div>
                   ))}
                 </div>
               </div>
               <div className="ss-side">
-                <div className="ss-ring"><span>51%</span><small>прогресс</small></div>
+                <div className="ss-ring"><span>{pct}%</span><small>прогресс</small></div>
                 <span className="ss-b3d s1" aria-hidden="true">abco</span>
                 <span className="ss-b3d s2" aria-hidden="true">abco</span>
                 <span className="ss-b3d s3" aria-hidden="true">abco</span>
@@ -1615,7 +1619,7 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
         <div className="ago"><button className="btn btn-primary" onClick={(e)=>{e.stopPropagation();open(nextTopic,"tutor");}}>Спросить <ArrowRight size={18}/></button></div>
       </section>
 
-      <ScrollShowcase/>
+      <ScrollShowcase pct={coursePct}/>
 
       <div className="sec-head"><h3>Ваша статистика</h3></div>
       <section className="stats">
