@@ -1984,7 +1984,7 @@ function ExamTests({prog,save,track}){
       <div className="cc-quiz-i">
         <Award size={28}/>
         <h2>Смешанный тест</h2>
-        <p>Банк из <b>{pool.length}</b> вопросов по всем темам (Основы, IAS 1, IAS 2, IAS 16). Лучший результат: <b>{examBest}%</b>.</p>
+        <p>Банк из <b>{pool.length}</b> вопросов по всем темам ({TOPICS.map(t=>t.code).join(", ")}). Лучший результат: <b>{examBest}%</b>.</p>
         <div className="cc-len">
           <span className="cc-len-l">Сколько вопросов?</span>
           <div className="cc-len-opts">
