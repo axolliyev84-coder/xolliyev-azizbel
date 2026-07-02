@@ -1466,7 +1466,7 @@ function Track({v}){ return <div className="cc-track"><div className="cc-track-f
 
 /* ===================== APP ===================== */
 export default function App(){
-  const [view,setView]=useState("home");          // home | topic | hw | exam
+  const [view,setView]=useState("home");          // home | topic | hw | exam | prep
   const [topicId,setTopicId]=useState("ias16");
   const [tab,setTab]=useState("theory");
   const [prog,setProg]=useState({});
@@ -1564,10 +1564,11 @@ export default function App(){
         </div>
       </header>
 
-      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id,tabName)=>{setTopicId(id);setTab(tabName||"theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")}/>}
+      {view==="home" && <HomeView prog={prog} tp={tp} user={user} open={(id,tabName)=>{setTopicId(id);setTab(tabName||"theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}} goHw={()=>setView("hw")} goExam={()=>setView("exam")} goPrep={()=>setView("prep")}/>}
       {view==="topic" && <TopicView topic={topic} tab={tab} setTab={setTab} tp={tp} setTP={setTP} goHome={()=>setView("home")} track={track}/>}
       {view==="hw" && <HomeworkHub goHome={()=>setView("home")}/>}
       {view==="exam" && <ExamView prog={prog} save={save} track={track} goHome={()=>setView("home")}/>}
+      {view==="prep" && <PrepView prog={prog} save={save} track={track} goHome={()=>setView("home")} openTopic={(id)=>{setTopicId(id);setTab("theory");setView("topic");track("topic",(TMAP[id]||{}).code||id);}}/>}
 
       {modal && <div className="cc-mov" onClick={()=>setModal(null)}>
         <div className="cc-mcard" onClick={e=>e.stopPropagation()}>
@@ -1694,7 +1695,7 @@ function ScrollShowcase({pct=0}){
   );
 }
 
-function HomeView({prog,tp,user,open,goHw,goExam}){
+function HomeView({prog,tp,user,open,goHw,goExam,goPrep}){
   const ref=useRef(null);
   const COL=["em","sky","amb","vio"];
   const dl=n=>{const a=n%100,b=n%10; if(a>10&&a<20)return"дней"; if(b===1)return"день"; if(b>=2&&b<=4)return"дня"; return"дней";};
@@ -1867,9 +1868,10 @@ function HomeView({prog,tp,user,open,goHw,goExam}){
         })}
       </section>
 
-      <section className="two">
+      <section className="two three">
         <div className="wide" onClick={goHw} onMouseMove={tiltMove} onMouseLeave={tiltLeave}><div className="wic e-sky"><PenTool size={24}/></div><div><h4>Домашние задания</h4><p>Все задачи для самостоятельного решения</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
         <div className="wide" onClick={goExam} onMouseMove={tiltMove} onMouseLeave={tiltLeave}><div className="wic e-amb"><Trophy size={24}/></div><div><h4>Экзамен</h4><p>Задачи с решениями и смешанные тесты</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
+        <div className="wide" onClick={goPrep} onMouseMove={tiltMove} onMouseLeave={tiltLeave}><div className="wic e-vio"><Target size={24}/></div><div><h4>Подготовка к экзамену</h4><p>Готовность по темам и пробный экзамен с таймером</p></div><span className="wgo"><ArrowRight size={20}/></span></div>
       </section>
     </main>
 
@@ -2213,6 +2215,196 @@ function ExamTests({prog,save,track}){
         return <button key={i} className={cls} disabled={!!r} onClick={()=>mcq(i)}><span className="cc-opt-k">{String.fromCharCode(1040+i)}</span><span>{o}</span></button>; })}</div>
       {r && <div className={"cc-fb "+(r.correct?"good":"bad")}><b>{r.correct?"Верно!":"Неверно."}</b> {q.explain}</div>}
       {r && <div className="cc-qnav"><button className="cc-btn amber" onClick={next}>{idx+1>=qs.length?<>Завершить <Trophy size={15}/></>:<>Далее <ArrowRight size={15}/></>}</button></div>}
+    </div>
+  );
+}
+
+/* ===================== ПОДГОТОВКА К ЭКЗАМЕНУ ===================== */
+const MOCK_SEC_PER_Q = 75; // sekund/savol — real imtihon tempi
+function fmtMMSS(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function topicReady(t,p){
+  const cardPct = t.cards.length ? p.cardsKnown.length/t.cards.length*100 : 0;
+  const hwPct = t.homeworks.length ? Math.min(1,Object.keys(p.hw||{}).length/t.homeworks.length)*100 : 0;
+  return Math.round(cardPct*0.4 + (p.quizBest||0)*0.4 + hwPct*0.2);
+}
+function buildMock(n){
+  // savollarni mavzular bo'ylab teng taqsimlab tanlaymiz (round-robin), keyin aralashtiramiz
+  const by={};
+  EXAM_TEST_POOL.forEach(q=>{ (by[q.code]=by[q.code]||[]).push(q); });
+  const groups=Object.values(by).map(g=>[...g].sort(()=>Math.random()-0.5));
+  const out=[];
+  for(let added=true; out.length<n && added;){
+    added=false;
+    for(const g of groups){ if(g.length && out.length<n){ out.push(g.pop()); added=true; } }
+  }
+  return out.sort(()=>Math.random()-0.5);
+}
+
+function PrepView({prog,save,track,goHome,openTopic}){
+  const [mode,setMode]=useState("ready");
+  return(
+    <main className="cc-main">
+      <button className="cc-back" onClick={goHome}><ArrowLeft size={15}/> В главное меню</button>
+      <div className="cc-exam-hero">
+        <div className="cc-exam-badge"><Target size={22}/></div>
+        <div>
+          <h1 className="cc-h1 sm">Подготовка к экзамену</h1>
+          <p className="cc-exam-sub">Оцените готовность по каждой теме и пройдите пробный экзамен с таймером — в условиях, как на реальном экзамене.</p>
+        </div>
+      </div>
+      <div className="cc-seg-tabs">
+        <button className={"cc-seg-tab"+(mode==="ready"?" on":"")} onClick={()=>setMode("ready")}><Gauge size={16}/> Готовность</button>
+        <button className={"cc-seg-tab"+(mode==="mock"?" on":"")} onClick={()=>setMode("mock")}><Clock size={16}/> Пробный экзамен</button>
+      </div>
+      {mode==="ready" ? <PrepReadiness prog={prog} openTopic={openTopic} goMock={()=>setMode("mock")}/> : <PrepMock prog={prog} save={save} track={track}/>}
+    </main>
+  );
+}
+
+function PrepReadiness({prog,openTopic,goMock}){
+  const tp=id=>prog[id]||{cardsKnown:[],quizBest:0,hw:{}};
+  const rows=TOPICS.map(t=>({t,r:topicReady(t,tp(t.id))}));
+  const overall=Math.round(rows.reduce((s,x)=>s+x.r,0)/rows.length);
+  const weak=rows.filter(x=>x.r<50).length;
+  const verdict= overall>=85?"Вы готовы к экзамену!": overall>=60?"Хорошая база — закрепите слабые темы": overall>=30?"Средняя готовность — продолжайте тренироваться":"Начало пути — изучайте темы по порядку";
+  const log=prog.mockLog||[];
+  return(
+    <div className="cc-view">
+      <div className="cc-prep-hero">
+        <div className="cc-prep-ring" style={{background:"conic-gradient(var(--teal) "+(overall*3.6)+"deg, var(--line) 0deg)"}}><div className="cc-prep-ring-in"><b>{overall}%</b><span>готовность</span></div></div>
+        <div className="cc-prep-vt">
+          <h3>{verdict}</h3>
+          <p>Оценка по теме: 40% карточки + 40% лучший тест + 20% домашние задания. {weak>0 ? "Слабых тем: "+weak+"." : "Слабых тем нет."}</p>
+          <div className="cc-prep-acts">
+            <button className="cc-btn amber" onClick={goMock}><Clock size={15}/> Пробный экзамен</button>
+            {prog.mockBest!==undefined && <span className="cc-prep-best"><Trophy size={14}/> Лучшая симуляция: {prog.mockBest}%</span>}
+          </div>
+        </div>
+      </div>
+      <div className="cc-prep-list">
+        {rows.map(({t,r})=>(
+          <button key={t.id} className="cc-prep-row" onClick={()=>openTopic(t.id)} title="Открыть тему">
+            <span className="cc-exam-code">{t.code}</span>
+            <span className="cc-prep-name">{t.title}</span>
+            {r<50 && <span className="cc-prep-weak"><AlertTriangle size={12}/> слабая</span>}
+            <span className="cc-prep-bar"><i style={{width:r+"%"}} className={r>=70?"g":r>=40?"m":"w"}/></span>
+            <b className="cc-prep-pct">{r}%</b>
+          </button>
+        ))}
+      </div>
+      {log.length>0 && (
+        <div className="cc-prep-log">
+          <h4><ListChecks size={15}/> Последние симуляции</h4>
+          {log.map((l,i)=>(
+            <div key={i} className="cc-prep-log-r"><span>{new Date(l.d).toLocaleDateString("ru-RU")}</span><span>{l.n} вопр.</span><span><Clock size={12}/> {fmtMMSS(l.t)}</span><b className={l.pct>=60?"ok":"bad"}>{l.pct}%</b></div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrepMock({prog,save,track}){
+  const [stage,setStage]=useState("intro"); // intro | run | done
+  const [count,setCount]=useState(20);
+  const [qs,setQs]=useState([]);
+  const [idx,setIdx]=useState(0);
+  const [ans,setAns]=useState([]);
+  const [left,setLeft]=useState(0);
+  const doneRef=useRef(false);
+  function start(n){ const k=Math.min(n,EXAM_TEST_POOL.length); const sh=buildMock(k); doneRef.current=false; setQs(sh); setAns(sh.map(()=>null)); setIdx(0); setLeft(k*MOCK_SEC_PER_Q); setStage("run"); }
+  function finish(){
+    if(doneRef.current) return; doneRef.current=true;
+    const c=qs.reduce((s,q,i)=>s+(ans[i]===q.correct?1:0),0);
+    const pct=qs.length?Math.round(c/qs.length*100):0;
+    const used=qs.length*MOCK_SEC_PER_Q-Math.max(0,left);
+    const entry={d:Date.now(),n:qs.length,pct,t:used};
+    const log=[entry,...(prog.mockLog||[])].slice(0,8);
+    save({...prog,mockBest:Math.max(prog.mockBest||0,pct),mockLog:log});
+    if(track) track("exam","симуляция "+pct+"%");
+    setStage("done");
+  }
+  useEffect(()=>{ if(stage!=="run") return; const t=setInterval(()=>setLeft(s=>s-1),1000); return ()=>clearInterval(t); },[stage]);
+  useEffect(()=>{ if(stage==="run" && left<=0 && qs.length) finish(); },[left,stage]); // vaqt tugadi — avtomatik yakun
+  if(stage==="intro") return(
+    <div className="cc-view">
+      <div className="cc-quiz-i">
+        <Clock size={28}/>
+        <h2>Пробный экзамен</h2>
+        <p>Условия как на реальном экзамене: <b>таймер</b> ({MOCK_SEC_PER_Q} сек. на вопрос), ответы можно менять до финиша, разбор ошибок — только в конце. Вопросы распределены по всем {TOPICS.length} темам курса.{prog.mockBest!==undefined && <> Лучший результат: <b>{prog.mockBest}%</b>.</>}</p>
+        <div className="cc-len">
+          <span className="cc-len-l">Сколько вопросов?</span>
+          <div className="cc-len-opts">
+            {[10,20,40].map(n=><button key={n} className={"cc-len-b"+(count===n?" on":"")} onClick={()=>setCount(n)}>{n}</button>)}
+          </div>
+          <span className="cc-prep-time"><Clock size={13}/> Время на тест: <b>{fmtMMSS(count*MOCK_SEC_PER_Q)}</b> · порог сдачи 60%</span>
+        </div>
+        <button className="cc-btn amber" onClick={()=>start(count)}><ArrowRight size={16}/> Начать симуляцию</button>
+      </div>
+    </div>
+  );
+  if(stage==="done"){
+    const res=qs.map((q,i)=>({q,choice:ans[i],correct:ans[i]===q.correct}));
+    const c=res.filter(x=>x.correct).length;
+    const pct=qs.length?Math.round(c/qs.length*100):0;
+    const used=qs.length*MOCK_SEC_PER_Q-Math.max(0,left);
+    const byCode={};
+    res.forEach(r=>{ const k=r.q.code; byCode[k]=byCode[k]||{c:0,n:0}; byCode[k].n++; if(r.correct) byCode[k].c++; });
+    const wrong=res.filter(x=>!x.correct);
+    return(
+      <div className="cc-view">
+        <div className="cc-done">
+          <div className="cc-done-p">{pct}%</div>
+          <h2>{pct>=80?"Отлично — экзамен по плечу!":pct>=60?"Порог пройден — закрепите слабые темы":"Пока рано — продолжайте тренироваться"}</h2>
+          <p>{c} из {qs.length} верно · время {fmtMMSS(used)} · порог 60% {pct>=60?"пройден":"не пройден"}</p>
+          <div className="cc-done-a"><button className="cc-btn amber" onClick={()=>setStage("intro")}><RefreshCw size={16}/> Ещё раз</button></div>
+        </div>
+        <div className="cc-prep-brk">
+          <h4><PieChart size={15}/> Результат по темам</h4>
+          {Object.entries(byCode).map(([k,v])=>(
+            <div className="cc-prep-row static" key={k}>
+              <span className="cc-exam-code">{k}</span>
+              <span className="cc-prep-name">{(TOPICS.find(t=>t.code===k)||{}).title||""}</span>
+              <span className="cc-prep-bar"><i style={{width:(v.c/v.n*100)+"%"}} className={v.c/v.n>=0.7?"g":v.c/v.n>=0.4?"m":"w"}/></span>
+              <b className="cc-prep-pct">{v.c}/{v.n}</b>
+            </div>
+          ))}
+        </div>
+        {wrong.length>0 && (
+          <div className="cc-prep-mist">
+            <h4><XCircle size={15}/> Работа над ошибками ({wrong.length})</h4>
+            {wrong.map((r,i)=>(
+              <div className="cc-prep-m" key={i}>
+                <div className="cc-prep-mq"><span className="cc-exam-code">{r.q.code}</span> {r.q.q}</div>
+                <div className="cc-prep-ma bad"><XCircle size={13}/> Ваш ответ: {r.choice===null?"— (нет ответа)":r.q.options[r.choice]}</div>
+                <div className="cc-prep-ma good"><CheckCircle2 size={13}/> Верно: {r.q.options[r.q.correct]}</div>
+                <div className="cc-prep-mex">{r.q.explain}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+  const q=qs[idx];
+  if(!q) return null;
+  const answered=ans.filter(a=>a!==null).length;
+  return(
+    <div className="cc-view">
+      <div className="cc-quiz-top">Симуляция · вопрос {idx+1} / {qs.length} <span className="cc-exam-code">{q.code}</span><span className={"cc-prep-timer"+(left<=60?" danger":"")}><Clock size={13}/> {fmtMMSS(left)}</span></div>
+      <Track v={Math.round(answered/qs.length*100)}/>
+      <div className="cc-q">{q.q}</div>
+      <div className="cc-opts">{q.options.map((o,i)=>{
+        const sel=ans[idx]===i;
+        return <button key={i} className={"cc-opt"+(sel?" sel":"")} onClick={()=>setAns(a=>a.map((x,j)=>j===idx?i:x))}><span className="cc-opt-k">{String.fromCharCode(1040+i)}</span><span>{o}</span></button>;
+      })}</div>
+      <div className="cc-qnav cc-prep-nav">
+        <button className="cc-btn" disabled={idx===0} onClick={()=>setIdx(idx-1)}><ArrowLeft size={15}/> Назад</button>
+        {idx+1<qs.length
+          ? <button className="cc-btn amber" onClick={()=>setIdx(idx+1)}>Далее <ArrowRight size={15}/></button>
+          : <button className="cc-btn amber" onClick={finish}>Завершить <Trophy size={15}/></button>}
+      </div>
+      <p className="cc-prep-hint">Ответы можно менять до завершения. Разбор ошибок появится после финиша — как на реальном экзамене.</p>
     </div>
   );
 }
@@ -2653,6 +2845,51 @@ html,body{margin:0;padding:0;}
 .cc-done-a{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;justify-content:center;}
 .cc-quiz-top{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:11px;display:flex;align-items:center;gap:10px;}
 .cc-exam-code{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--tealD);background:var(--tealT);padding:3px 8px;border-radius:7px;}
+/* --- Подготовка к экзамену --- */
+.cc-prep-hero{display:flex;gap:22px;align-items:center;background:var(--surf);border:1px solid var(--line);border-radius:20px;padding:24px 26px;box-shadow:var(--shadow);margin-bottom:18px;flex-wrap:wrap;}
+.cc-prep-ring{width:118px;height:118px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;}
+.cc-prep-ring-in{width:90px;height:90px;border-radius:50%;background:var(--surf);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.cc-prep-ring-in b{font-size:23px;font-weight:800;color:var(--ink);font-family:var(--sans);font-variant-numeric:tabular-nums;}
+.cc-prep-ring-in span{font-size:10.5px;color:var(--ink2);}
+.cc-prep-vt{flex:1;min-width:230px;}
+.cc-prep-vt h3{margin:0 0 6px;font-size:18px;font-weight:800;color:var(--ink);font-family:var(--sans);}
+.cc-prep-vt p{margin:0 0 13px;font-size:13.5px;color:var(--ink2);line-height:1.55;}
+.cc-prep-acts{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.cc-prep-best{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--tealD);background:var(--tealT);padding:7px 12px;border-radius:999px;}
+.cc-prep-list{display:flex;flex-direction:column;gap:8px;}
+.cc-prep-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surf);border:1px solid var(--line);border-radius:14px;cursor:pointer;text-align:left;font-family:var(--sans);transition:.15s;box-shadow:var(--shadow);width:100%;}
+.cc-prep-row:hover{border-color:var(--teal);transform:translateY(-1px);}
+.cc-prep-row.static{cursor:default;box-shadow:none;} .cc-prep-row.static:hover{border-color:var(--line);transform:none;}
+.cc-prep-name{flex:1;font-size:13.5px;font-weight:600;color:var(--ink);min-width:120px;}
+.cc-prep-weak{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--rose);background:var(--rose-bg);padding:4px 8px;border-radius:999px;flex:none;}
+.cc-prep-bar{width:130px;height:8px;border-radius:99px;background:var(--line);overflow:hidden;flex:none;}
+.cc-prep-bar i{display:block;height:100%;border-radius:99px;transition:width .5s ease;}
+.cc-prep-bar i.g{background:linear-gradient(90deg,#3FA46A,#2C7A4D);}
+.cc-prep-bar i.m{background:linear-gradient(90deg,#F0A93C,#C2811E);}
+.cc-prep-bar i.w{background:linear-gradient(90deg,var(--rose),#A33232);}
+.cc-prep-pct{width:46px;text-align:right;font-size:13px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;flex:none;}
+.cc-prep-timer{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--tealD);background:var(--tealT);padding:5px 11px;border-radius:999px;font-variant-numeric:tabular-nums;}
+.cc-prep-timer.danger{color:#fff;background:var(--rose);animation:prepblink 1s steps(2) infinite;}
+@keyframes prepblink{50%{opacity:.55;}}
+.cc-opt.sel{border-color:var(--teal);background:var(--tealT);}
+.cc-prep-nav{display:flex;gap:10px;justify-content:space-between;}
+.cc-prep-hint{font-size:12px;color:var(--ink2);text-align:center;margin-top:10px;}
+.cc-prep-time{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);font-weight:600;}
+.cc-prep-brk,.cc-prep-mist,.cc-prep-log{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);margin-top:16px;}
+.cc-prep-brk h4,.cc-prep-mist h4,.cc-prep-log h4{margin:0 0 12px;font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;font-family:var(--sans);}
+.cc-prep-brk .cc-prep-list{gap:6px;}
+.cc-prep-m+.cc-prep-m{border-top:1px solid var(--line);}
+.cc-prep-m{padding:13px 0 4px;}
+.cc-prep-mq{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.5;}
+.cc-prep-ma{display:flex;align-items:flex-start;gap:7px;font-size:13px;margin:4px 0;line-height:1.45;}
+.cc-prep-ma.bad{color:var(--rose);} .cc-prep-ma.good{color:#2C7A4D;}
+.cc.dark .cc-prep-ma.good{color:#5BC98C;}
+.cc-prep-mex{font-size:12.5px;color:var(--ink2);margin:8px 0 10px;line-height:1.5;background:var(--tealT);border-radius:10px;padding:9px 12px;}
+.cc-prep-log-r{display:flex;gap:14px;align-items:center;font-size:13px;color:var(--ink2);padding:8px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;}
+.cc-prep-log-r span{display:inline-flex;align-items:center;gap:5px;}
+.cc-prep-log-r b{margin-left:auto;font-size:13.5px;}
+.cc-prep-log-r b.ok{color:#2C7A4D;} .cc.dark .cc-prep-log-r b.ok{color:#5BC98C;}
+.cc-prep-log-r b.bad{color:var(--rose);}
 .cc-q{font-family:var(--serif);font-size:20px;font-weight:600;line-height:1.36;margin:16px 0 18px;letter-spacing:-.01em;}
 .cc-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
 .cc-opt{display:flex;align-items:center;gap:12px;text-align:left;background:var(--surf);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;font-family:var(--sans);transition:.14s;box-shadow:var(--shadow);}
@@ -3049,6 +3286,8 @@ html,body{margin:0;padding:0;}
 
 /* wide action cards */
 .ccx .two{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px;}
+.ccx .two.three{grid-template-columns:repeat(3,1fr);}
+@media(max-width:1000px){ .ccx .two.three{grid-template-columns:1fr 1fr;} }
 .ccx .wide{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:var(--radius);background:var(--card2);border:1px solid var(--line);box-shadow:var(--inner-hl),var(--shadow-card);cursor:pointer;transition:transform .12s ease,box-shadow .25s ease,border-color .25s ease;transform-style:preserve-3d;}
 .ccx .wide:hover{transform:translateY(-3px);border-color:var(--line2);}
 .ccx .wide .wic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;flex-shrink:0;}
@@ -3085,7 +3324,7 @@ html,body{margin:0;padding:0;}
   .ccx .ring{width:128px;height:128px;} .ccx .ring .pct b{font-size:28px;}
   .ccx .goal{width:150px;}
   .ccx .stats{grid-template-columns:repeat(2,1fr);}
-  .ccx .grid,.ccx .two{grid-template-columns:1fr;}
+  .ccx .grid,.ccx .two,.ccx .two.three{grid-template-columns:1fr;}
   .ccx .ai{flex-wrap:wrap;} .ccx .ai .ago{width:100%;} .ccx .ai .ago .btn{width:100%;justify-content:center;}
   .cc-mcta{display:block;}
   .cc-fi{opacity:.10!important;}
