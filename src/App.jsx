@@ -2220,6 +2220,11 @@ function ExamTests({prog,save,track}){
 }
 
 /* ===================== ПОДГОТОВКА К ЭКЗАМЕНУ ===================== */
+/* Пробный экзамен uchun ALOHIDA savollar banki (kurs testlaridan mustaqil).
+   Savollar shu massivga qo'shiladi — format kurs testlari bilan bir xil:
+   { code:"IAS 16", q:"Savol matni?", options:["A","B","V","G"], correct:1, explain:"Izoh." },
+   Massiv bo'sh ekan, bo'lim "готовится" holatida; savollar qo'shilishi bilan avtomatik ochiladi. */
+const PREP_EXAM_POOL = [];
 const MOCK_SEC_PER_Q = 75; // sekund/savol — real imtihon tempi
 function fmtMMSS(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
 function topicReady(t,p){
@@ -2230,7 +2235,7 @@ function topicReady(t,p){
 function buildMock(n){
   // savollarni mavzular bo'ylab teng taqsimlab tanlaymiz (round-robin), keyin aralashtiramiz
   const by={};
-  EXAM_TEST_POOL.forEach(q=>{ (by[q.code]=by[q.code]||[]).push(q); });
+  PREP_EXAM_POOL.forEach(q=>{ (by[q.code]=by[q.code]||[]).push(q); });
   const groups=Object.values(by).map(g=>[...g].sort(()=>Math.random()-0.5));
   const out=[];
   for(let added=true; out.length<n && added;){
@@ -2242,6 +2247,7 @@ function buildMock(n){
 
 function PrepView({prog,save,track,goHome,openTopic}){
   const [mode,setMode]=useState("ready");
+  const empty=PREP_EXAM_POOL.length===0; // savollar hali qo'shilmagan — bo'lim "готовится"
   return(
     <main className="cc-main">
       <button className="cc-back" onClick={goHome}><ArrowLeft size={15}/> В главное меню</button>
@@ -2252,11 +2258,21 @@ function PrepView({prog,save,track,goHome,openTopic}){
           <p className="cc-exam-sub">Оцените готовность по каждой теме и пройдите пробный экзамен с таймером — в условиях, как на реальном экзамене.</p>
         </div>
       </div>
-      <div className="cc-seg-tabs">
-        <button className={"cc-seg-tab"+(mode==="ready"?" on":"")} onClick={()=>setMode("ready")}><Gauge size={16}/> Готовность</button>
-        <button className={"cc-seg-tab"+(mode==="mock"?" on":"")} onClick={()=>setMode("mock")}><Clock size={16}/> Пробный экзамен</button>
-      </div>
-      {mode==="ready" ? <PrepReadiness prog={prog} openTopic={openTopic} goMock={()=>setMode("mock")}/> : <PrepMock prog={prog} save={save} track={track}/>}
+      {empty ? (
+        <div className="cc-view">
+          <div className="cc-quiz-i">
+            <Target size={28}/>
+            <h2>Раздел готовится</h2>
+            <p>Скоро здесь появятся <b>пробный экзамен с таймером</b> и оценка готовности по темам. Вопросы уже готовятся — загляните позже!</p>
+          </div>
+        </div>
+      ) : (<>
+        <div className="cc-seg-tabs">
+          <button className={"cc-seg-tab"+(mode==="ready"?" on":"")} onClick={()=>setMode("ready")}><Gauge size={16}/> Готовность</button>
+          <button className={"cc-seg-tab"+(mode==="mock"?" on":"")} onClick={()=>setMode("mock")}><Clock size={16}/> Пробный экзамен</button>
+        </div>
+        {mode==="ready" ? <PrepReadiness prog={prog} openTopic={openTopic} goMock={()=>setMode("mock")}/> : <PrepMock prog={prog} save={save} track={track}/>}
+      </>)}
     </main>
   );
 }
@@ -2312,7 +2328,7 @@ function PrepMock({prog,save,track}){
   const [ans,setAns]=useState([]);
   const [left,setLeft]=useState(0);
   const doneRef=useRef(false);
-  function start(n){ const k=Math.min(n,EXAM_TEST_POOL.length); const sh=buildMock(k); doneRef.current=false; setQs(sh); setAns(sh.map(()=>null)); setIdx(0); setLeft(k*MOCK_SEC_PER_Q); setStage("run"); }
+  function start(n){ const k=Math.min(n,PREP_EXAM_POOL.length); const sh=buildMock(k); doneRef.current=false; setQs(sh); setAns(sh.map(()=>null)); setIdx(0); setLeft(k*MOCK_SEC_PER_Q); setStage("run"); }
   function finish(){
     if(doneRef.current) return; doneRef.current=true;
     const c=qs.reduce((s,q,i)=>s+(ans[i]===q.correct?1:0),0);
