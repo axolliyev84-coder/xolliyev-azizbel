@@ -2693,6 +2693,8 @@ const PREP_MOTO = [
 ];
 const PREP_PROB_PTS = 4;   // har bir masala balli (har test = 1 ball)
 function fmtMMSS(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+// Variantlarda javob pozitsiyalari o'zgarmas bo'lib qolmasligi uchun har imtihonda variantlar tasodifiy aralashtiriladi
+function shuffleOpts(q){ const idx=q.options.map((_,i)=>i).sort(()=>Math.random()-0.5); return {...q, options: idx.map(i=>q.options[i]), correct: idx.indexOf(q.correct)}; }
 
 function PrepView({prog,save,track,goHome}){
   return(
@@ -2714,6 +2716,7 @@ function PrepExam({prog,save,track}){
   const [v,setV]=useState(PREP_VARIANTS[0]);
   const [stage,setStage]=useState("intro");   // intro | run | grading | done
   const [tab,setTab]=useState("tests");
+  const [tQs,setTQs]=useState([]);            // joriy urinish uchun aralashtirilgan testlar
   const [tAns,setTAns]=useState([]);
   const [pAns,setPAns]=useState([]);
   const [left,setLeft]=useState(0);
@@ -2726,7 +2729,7 @@ function PrepExam({prog,save,track}){
 
   function start(vv){
     setV(vv); doneRef.current=false;
-    setTAns(vv.tests.map(()=>null)); setPAns(vv.problems.map(()=>""));
+    setTQs(vv.tests.map(shuffleOpts)); setTAns(vv.tests.map(()=>null)); setPAns(vv.problems.map(()=>""));
     setLeft(vv.minutes*60); setTab("tests"); setConfirmFin(false); setAi(null); setAiFail(false);
     setCnt(3); setStage("count");
   }
@@ -2769,7 +2772,7 @@ function PrepExam({prog,save,track}){
       res=v.problems.map(()=>({ball:0,fikr:"Ответ не дан."}));
     }
     setAi(res); setAiFail(fail&&!res);
-    const tPts=v.tests.reduce((s,q,i)=>s+(tAns[i]===q.correct?1:0),0);
+    const tPts=tQs.reduce((s,q,i)=>s+(tAns[i]===q.correct?1:0),0);
     const pPts=res?res.reduce((s,r)=>s+r.ball,0):0;
     const maxP=v.tests.length+(res?v.problems.length*PREP_PROB_PTS:0);
     const pct=maxP?Math.round((tPts+pPts)/maxP*100):0;
@@ -2827,7 +2830,7 @@ function PrepExam({prog,save,track}){
   );
 
   if(stage==="done"){
-    const tPts=v.tests.reduce((s,q,i)=>s+(tAns[i]===q.correct?1:0),0);
+    const tPts=tQs.reduce((s,q,i)=>s+(tAns[i]===q.correct?1:0),0);
     const pPts=ai?ai.reduce((s,r)=>s+r.ball,0):0;
     const maxP=v.tests.length+(ai?v.problems.length*PREP_PROB_PTS:0);
     const pct=maxP?Math.round((tPts+pPts)/maxP*100):0;
@@ -2845,7 +2848,7 @@ function PrepExam({prog,save,track}){
         </div>
         <div className="cc-prep-mist">
           <h4><ListChecks size={15}/> Разбор тестов</h4>
-          {v.tests.map((q,i)=>{
+          {tQs.map((q,i)=>{
             const ok=tAns[i]===q.correct;
             return(
               <div className="cc-prep-m" key={i}>
@@ -2891,7 +2894,7 @@ function PrepExam({prog,save,track}){
       </div>
       {tab==="tests" ? (
         <div className="cc-pv-list">
-          {v.tests.map((q,i)=>(
+          {tQs.map((q,i)=>(
             <div className="cc-pv-q" key={i}>
               <div className="cc-pv-qh"><span className="cc-pv-num">{i+1}</span><span className="cc-exam-code">{q.code}</span></div>
               <div className="cc-pv-qt">{q.q}</div>
