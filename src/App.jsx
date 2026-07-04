@@ -2220,34 +2220,114 @@ function ExamTests({prog,save,track}){
 }
 
 /* ===================== ПОДГОТОВКА К ЭКЗАМЕНУ ===================== */
-/* Пробный экзамен uchun ALOHIDA savollar banki (kurs testlaridan mustaqil).
-   Savollar shu massivga qo'shiladi — format kurs testlari bilan bir xil:
-   { code:"IAS 16", q:"Savol matni?", options:["A","B","V","G"], correct:1, explain:"Izoh." },
-   Massiv bo'sh ekan, bo'lim "готовится" holatida; savollar qo'shilishi bilan avtomatik ochiladi. */
-const PREP_EXAM_POOL = [];
-const MOCK_SEC_PER_Q = 75; // sekund/savol — real imtihon tempi
-function fmtMMSS(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
-function topicReady(t,p){
-  const cardPct = t.cards.length ? p.cardsKnown.length/t.cards.length*100 : 0;
-  const hwPct = t.homeworks.length ? Math.min(1,Object.keys(p.hw||{}).length/t.homeworks.length)*100 : 0;
-  return Math.round(cardPct*0.4 + (p.quizBest||0)*0.4 + hwPct*0.2);
-}
-function buildMock(n){
-  // savollarni mavzular bo'ylab teng taqsimlab tanlaymiz (round-robin), keyin aralashtiramiz
-  const by={};
-  PREP_EXAM_POOL.forEach(q=>{ (by[q.code]=by[q.code]||[]).push(q); });
-  const groups=Object.values(by).map(g=>[...g].sort(()=>Math.random()-0.5));
-  const out=[];
-  for(let added=true; out.length<n && added;){
-    added=false;
-    for(const g of groups){ if(g.length && out.length<n){ out.push(g.pop()); added=true; } }
-  }
-  return out.sort(()=>Math.random()-0.5);
-}
+const EXAM_VARIANT_1 = {
+  id: "v1",
+  title: "Вариант 1",
+  level: "средний",
 
-function PrepView({prog,save,track,goHome,openTopic}){
-  const [mode,setMode]=useState("ready");
-  const empty=PREP_EXAM_POOL.length===0; // savollar hali qo'shilmagan — bo'lim "готовится"
+  /* ---------- 20 ТЕСТОВ ---------- */
+  tests: [
+    /* IAS 2 — Запасы */
+    { code:"IAS 2", q:"Цена продажи запаса 300, затраты на завершение 40, затраты на продажу 20. Чистая стоимость реализации (ЧСР):", options:["280","240","260","300"], correct:1, explain:"ЧСР = 300 − 40 − 20 = 240." },
+    { code:"IAS 2", q:"Себестоимость запаса 70, ЧСР 65. Сумма списания в расход:", options:["0","5","65","70"], correct:1, explain:"Запас оценивается по меньшей из двух → списание 70 − 65 = 5." },
+    { code:"IAS 2", q:"При росте цен метод FIFO по сравнению со средневзвешенной даёт прибыль:", options:["ниже","выше","одинаковую","нулевую"], correct:1, explain:"FIFO списывает старые (дешёвые) партии → себестоимость ниже → прибыль выше." },
+    { code:"IAS 2", q:"Что ВКЛЮЧАЕТСЯ в себестоимость запасов?", options:["затраты на хранение готовой продукции","сверхнормативные потери сырья","невозмещаемая импортная пошлина","расходы на сбыт"], correct:2, explain:"Невозмещаемые пошлины входят в затраты на приобретение. Хранение ГП, сверхнормативные потери и сбыт — расходы периода." },
+
+    /* IAS 16 — ОС: амортизация и переоценка */
+    { code:"IAS 16", q:"Себестоимость 120 000, ликвидационная стоимость 20 000, срок 5 лет. Годовая амортизация (линейный метод):", options:["24 000","20 000","22 000","25 000"], correct:1, explain:"(120 000 − 20 000) / 5 = 20 000." },
+    { code:"IAS 16", q:"Себестоимость 120 000, метод уменьшаемого остатка 30%. Амортизация за 2-й год:", options:["36 000","25 200","30 000","21 000"], correct:1, explain:"Год 1: 120 000×30% = 36 000. Год 2: (120 000 − 36 000)×30% = 25 200." },
+    { code:"IAS 16", q:"Первая дооценка ОС отражается:", options:["как доход в ОПУ","в резерве переоценки (через ПСД)","в нераспределённой прибыли","как обязательство"], correct:1, explain:"Дооценка ОС → прочий совокупный доход → резерв переоценки в капитале." },
+    { code:"IAS 16", q:"Уценка ОС, по которому ранее создан резерв переоценки, отражается:", options:["полностью в ОПУ","полностью в резерве","сначала против резерва, превышение — в ОПУ","не отражается"], correct:2, explain:"Сначала уменьшается резерв переоценки этого актива, остаток уценки — расход в ОПУ." },
+    { code:"IAS 16", q:"Земля, как правило, не амортизируется, потому что:", options:["её стоимость несущественна","срок её полезного использования не ограничен","она не приносит выгод","она всегда переоценивается"], correct:1, explain:"У земли неограниченный срок службы → амортизация не начисляется." },
+
+    /* IAS 38 — НМА */
+    { code:"IAS 38", q:"Затраты на стадии ИССЛЕДОВАНИЙ:", options:["капитализируются","признаются расходом периода","откладываются до завершения проекта","включаются в гудвилл"], correct:1, explain:"Исследования — всегда расход. Капитализируется только стадия разработок (при выполнении критериев)." },
+    { code:"IAS 38", q:"Затраты на разработки капитализируются:", options:["всегда","никогда","при выполнении ВСЕХ критериев (осуществимость, намерение, ресурсы, выгоды, оценка)","по решению директора"], correct:2, explain:"Все критерии (PIRATE) должны выполняться одновременно; с этой даты затраты капитализируются." },
+    { code:"IAS 38", q:"Внутренне созданный бренд компании:", options:["признаётся НМА по затратам","признаётся по справедливой стоимости","не признаётся активом","признаётся как гудвилл"], correct:2, explain:"Внутренне созданные бренды/гудвилл не признаются — затраты нельзя надёжно отделить." },
+    { code:"IAS 38", q:"НМА с неопределённым сроком полезного использования:", options:["амортизируется 20 лет","амортизируется 10 лет","не амортизируется, но ежегодно тестируется на обесценение","списывается сразу"], correct:2, explain:"Нет амортизации; вместо неё — ежегодный тест на обесценение." },
+
+    /* IAS 40 — Инвестиционная недвижимость */
+    { code:"IAS 40", q:"Инвестиционная недвижимость — это недвижимость, удерживаемая для:", options:["производства продукции","административных целей","получения арендной платы и/или прироста стоимости","продажи в обычной деятельности"], correct:2, explain:"Аренда и/или прирост стоимости. Производство/админ — IAS 16, продажа — IAS 2." },
+    { code:"IAS 40", q:"По модели справедливой стоимости (IAS 40) изменения СС отражаются:", options:["в резерве переоценки","в ОПУ (прибыли/убытке)","в нераспределённой прибыли","не отражаются"], correct:1, explain:"Ключевое отличие от IAS 16: изменения СС инвестиционной недвижимости → сразу в ОПУ." },
+    { code:"IAS 40", q:"При модели справедливой стоимости амортизация инвестиционной недвижимости:", options:["начисляется линейно","начисляется по остатку","не начисляется","начисляется только на здание"], correct:2, explain:"Модель СС: без амортизации, актив ежегодно переоценивается до СС." },
+    { code:"IAS 40", q:"Здание, занимаемое владельцем под собственный офис, учитывается по:", options:["IAS 40","IAS 16","IAS 2","IFRS 5"], correct:1, explain:"Недвижимость, занимаемая владельцем, — это ОС (IAS 16), а не инвестиционная недвижимость." },
+
+    /* IAS 37 — Резервы */
+    { code:"IAS 37", q:"Резерв (оценочное обязательство) признаётся, когда:", options:["есть любая будущая потребность в деньгах","существующая обязанность + вероятный отток + надёжная оценка","руководство планирует расходы","есть решение совета директоров о будущих затратах"], correct:1, explain:"Три условия одновременно: существующая обязанность (юрид./конклюдентная), вероятный отток, надёжная оценка." },
+    { code:"IAS 37", q:"В резерв на реструктуризацию НЕ включаются:", options:["выходные пособия увольняемым","затраты на расторжение договоров","будущие операционные убытки и переобучение персонала","выплаты за отказ от пенсионных прав"], correct:2, explain:"Будущие убытки, переобучение и переезд связаны с продолжающейся деятельностью — в резерв не входят." },
+    { code:"IAS 37", q:"Отток ресурсов возможен, но НЕ вероятен. Это:", options:["резерв — признать","условное обязательство — раскрыть в примечаниях","игнорируется полностью","доход"], correct:1, explain:"Возможный (не вероятный) отток → условное обязательство: только раскрытие, без признания." }
+  ],
+
+  /* ---------- 5 ЗАДАЧ ---------- */
+  problems: [
+    { code:"IAS 2", level:"средне", title:"Запасы: FIFO и средневзвешенная (AVCO)",
+      problem:"На 1 марта остаток товара 200 ед. по 10 у.е. Движение за март: 5.03 — покупка 300 ед. по 12; 12.03 — продажа 350 ед.; 18.03 — покупка 250 ед. по 13; 25.03 — продажа 150 ед. Цена продажи — 20 у.е./ед. Определите себестоимость продаж, остаток запасов на 31.03 и валовую прибыль по методам FIFO и средневзвешенной стоимости (периодической).",
+      steps:[
+        ["Доступно за период","200×10 + 300×12 + 250×13 = 2 000 + 3 600 + 3 250 = 8 850 у.е. (750 ед.). Продано 500 ед., остаток 250 ед."],
+        ["FIFO — продажа 12.03","350 ед. = 200×10 + 150×12 = 2 000 + 1 800 = 3 800."],
+        ["FIFO — продажа 25.03","150 ед. × 12 = 1 800. Себестоимость продаж = 3 800 + 1 800 = 5 600."],
+        ["FIFO — остаток","250 ед. × 13 = 3 250. Проверка: 5 600 + 3 250 = 8 850 ✓"],
+        ["AVCO — средняя цена","8 850 / 750 = 11,8 у.е./ед."],
+        ["AVCO — себестоимость и остаток","Продажи: 500 × 11,8 = 5 900. Остаток: 250 × 11,8 = 2 950."],
+        ["Валовая прибыль","Выручка 500×20 = 10 000. FIFO: 10 000 − 5 600 = 4 400. AVCO: 10 000 − 5 900 = 4 100."]
+      ],
+      answer:"FIFO: себестоимость 5 600, остаток 3 250, ВП 4 400. AVCO: себестоимость 5 900, остаток 2 950, ВП 4 100." },
+
+    { code:"IAS 16", level:"средне", title:"Переоценка ОС двумя методами",
+      problem:"Здание: первоначальная стоимость 500 000, накопленный износ 100 000. Проведена переоценка: справедливая стоимость 480 000. Оставшийся срок службы после переоценки — 20 лет. Отразите переоценку (а) пропорциональным методом и (б) методом списания износа; приведите проводки и новую годовую амортизацию.",
+      steps:[
+        ["Балансовая стоимость","БС = 500 000 − 100 000 = 400 000. СС = 480 000 → дооценка 80 000."],
+        ["(а) Коэффициент","СС / БС = 480 000 / 400 000 = 1,2."],
+        ["(а) Пропорциональный метод","ПС: 500 000×1,2 = 600 000 (+100 000); НИ: 100 000×1,2 = 120 000 (+20 000). Проводки: Дт ОС 100 000 — Кт Резерв переоценки 100 000; Дт Резерв переоценки 20 000 — Кт Накопленный износ 20 000. Резерв нетто = 80 000."],
+        ["(а) Проверка","БС = 600 000 − 120 000 = 480 000 = СС ✓"],
+        ["(б) Метод списания износа","Дт Накопленный износ 80 000 — Кт Резерв переоценки 80 000. ПС остаётся 500 000, НИ = 100 000 − 80 000 = 20 000."],
+        ["(б) Проверка","БС = 500 000 − 20 000 = 480 000 = СС ✓"],
+        ["Новая амортизация","480 000 / 20 лет = 24 000 в год."]
+      ],
+      answer:"Дооценка 80 000 → резерв переоценки (ПСД) обоими методами; БС = 480 000. Новая амортизация 24 000/год." },
+
+    { code:"IAS 16", level:"средне", title:"Амортизация: три нелинейных метода",
+      problem:"Станок: себестоимость 200 000, ликвидационная стоимость 20 000, срок 4 года, общий ресурс 90 000 ед. Выпуск: 1-й год 25 000 ед., 2-й год 30 000 ед. Рассчитайте амортизацию за 1-й и 2-й годы: (а) методом уменьшаемого остатка (ставка 40%), (б) производственным методом, (в) методом суммы чисел лет. Сравните с линейным.",
+      steps:[
+        ["(а) Уменьшаемый остаток","Год 1: 200 000 × 40% = 80 000. Год 2: (200 000 − 80 000) × 40% = 48 000. (Ставка применяется к БС; ликвидационная стоимость — нижний предел.)"],
+        ["(б) Производственный","Ставка = (200 000 − 20 000) / 90 000 = 2 у.е./ед. Год 1: 25 000 × 2 = 50 000. Год 2: 30 000 × 2 = 60 000."],
+        ["(в) Сумма чисел лет","1+2+3+4 = 10. Год 1: 180 000 × 4/10 = 72 000. Год 2: 180 000 × 3/10 = 54 000."],
+        ["Линейный (сравнение)","180 000 / 4 = 45 000 в год."],
+        ["Вывод","Уменьшаемый остаток и СЧЛ дают ускоренную амортизацию (больше в первые годы); производственный следует за фактическим использованием."]
+      ],
+      answer:"Год 1 / Год 2: ум. остаток 80 000 / 48 000; производственный 50 000 / 60 000; СЧЛ 72 000 / 54 000; линейный 45 000 / 45 000." },
+
+    { code:"IAS 38", level:"средне", title:"НМА: исследования, разработки, амортизация",
+      problem:"Компания ведёт проект нового продукта. С 1 января по 30 апреля 2019 г. — стадия исследований, затраты 40 000 в месяц. С 1 мая все критерии капитализации выполнены; разработки длились с 1 мая по 31 октября 2019 г., затраты 50 000 в месяц. С 1 ноября актив готов к использованию, срок полезного использования 5 лет, ликвидационная стоимость 0. Определите: расходы в ОПУ за 2019 г., первоначальную стоимость НМА и его балансовую стоимость на 31.12.2019.",
+      steps:[
+        ["Исследования (янв–апр)","40 000 × 4 = 160 000 → расход периода (капитализация запрещена)."],
+        ["Разработки (май–окт)","50 000 × 6 = 300 000 → капитализируются с даты выполнения критериев. ПС НМА = 300 000."],
+        ["Амортизация 2019","С даты готовности (1 ноября): 300 000 / 5 лет / 12 × 2 мес = 10 000."],
+        ["БС на 31.12.2019","300 000 − 10 000 = 290 000."],
+        ["Расходы в ОПУ 2019","160 000 (исследования) + 10 000 (амортизация) = 170 000."]
+      ],
+      answer:"ПС НМА = 300 000; БС на 31.12.2019 = 290 000; расходы в ОПУ 2019 = 170 000." },
+
+    { code:"IAS 40", level:"средне", title:"Инвестиционная недвижимость: строительство и модель СС",
+      problem:"Компания строит торговый центр для сдачи в аренду. Затраты: земля и материалы 12,4 млн, зарплата строителей 2,1 млн, прочие прямые затраты 1,5 млн. Строительство финансируется займом 15 млн под 8% годовых; проценты капитализировались 6 месяцев (до готовности). Объект готов 30.06.2019. Учёт — по модели справедливой стоимости. СС на 31.12.2019 = 19 млн; гонорар оценщика 0,08 млн. Определите себестоимость объекта, проводки и влияние на прибыль 2019 г.",
+      steps:[
+        ["Затраты на строительство","12,4 + 2,1 + 1,5 = 16,0 млн."],
+        ["Капитализация процентов (IAS 23)","15 × 8% × 6/12 = 0,6 млн. Себестоимость при готовности = 16,6 млн. Дт Инвестиционная недвижимость 16,6 — Кт Незавершённое строительство."],
+        ["Переоценка на 31.12.2019","СС 19,0 − БС 16,6 = +2,4 млн. Дт ИН 2,4 — Кт Доход от изменения СС (ОПУ). Амортизация не начисляется."],
+        ["Гонорар оценщика","0,08 млн — расход периода (Дт Расходы — Кт Деньги), в стоимость не входит."],
+        ["Влияние на прибыль 2019","+2,4 − 0,08 = +2,32 млн. В ОФП на 31.12.2019: ИН = 19,0 млн."]
+      ],
+      answer:"Себестоимость 16,6 млн (вкл. проценты 0,6); БС на 31.12.2019 = 19 млн; влияние на прибыль 2019 = +2,32 млн." }
+  ]
+};
+
+/* Variantlar ro'yxati — yangi variant chiqsa shu massivga qo'shiladi ({...EXAM_VARIANT_2, minutes:40}) */
+const PREP_VARIANTS = [ {...EXAM_VARIANT_1, minutes:40} ];
+const PREP_PASS = 60;      // o'tish porogi, %
+const PREP_PROB_PTS = 4;   // har bir masala balli (har test = 1 ball)
+function fmtMMSS(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+function PrepView({prog,save,track,goHome}){
   return(
     <main className="cc-main">
       <button className="cc-back" onClick={goHome}><ArrowLeft size={15}/> В главное меню</button>
@@ -2255,172 +2335,197 @@ function PrepView({prog,save,track,goHome,openTopic}){
         <div className="cc-exam-badge"><Target size={22}/></div>
         <div>
           <h1 className="cc-h1 sm">Подготовка к экзамену</h1>
-          <p className="cc-exam-sub">Оцените готовность по каждой теме и пройдите пробный экзамен с таймером — в условиях, как на реальном экзамене.</p>
+          <p className="cc-exam-sub">Экзаменационный вариант: тесты + письменные задачи, общий таймер, проверка решений ИИ. Ответы показываются после завершения. Порог сдачи — {PREP_PASS}%.</p>
         </div>
       </div>
-      {empty ? (
-        <div className="cc-view">
-          <div className="cc-quiz-i">
-            <Target size={28}/>
-            <h2>Раздел готовится</h2>
-            <p>Скоро здесь появятся <b>пробный экзамен с таймером</b> и оценка готовности по темам. Вопросы уже готовятся — загляните позже!</p>
-          </div>
-        </div>
-      ) : (<>
-        <div className="cc-seg-tabs">
-          <button className={"cc-seg-tab"+(mode==="ready"?" on":"")} onClick={()=>setMode("ready")}><Gauge size={16}/> Готовность</button>
-          <button className={"cc-seg-tab"+(mode==="mock"?" on":"")} onClick={()=>setMode("mock")}><Clock size={16}/> Пробный экзамен</button>
-        </div>
-        {mode==="ready" ? <PrepReadiness prog={prog} openTopic={openTopic} goMock={()=>setMode("mock")}/> : <PrepMock prog={prog} save={save} track={track}/>}
-      </>)}
+      <PrepExam prog={prog} save={save} track={track}/>
     </main>
   );
 }
 
-function PrepReadiness({prog,openTopic,goMock}){
-  const tp=id=>prog[id]||{cardsKnown:[],quizBest:0,hw:{}};
-  const rows=TOPICS.map(t=>({t,r:topicReady(t,tp(t.id))}));
-  const overall=Math.round(rows.reduce((s,x)=>s+x.r,0)/rows.length);
-  const weak=rows.filter(x=>x.r<50).length;
-  const verdict= overall>=85?"Вы готовы к экзамену!": overall>=60?"Хорошая база — закрепите слабые темы": overall>=30?"Средняя готовность — продолжайте тренироваться":"Начало пути — изучайте темы по порядку";
-  const log=prog.mockLog||[];
-  return(
+function PrepExam({prog,save,track}){
+  const [v,setV]=useState(PREP_VARIANTS[0]);
+  const [stage,setStage]=useState("intro");   // intro | run | grading | done
+  const [tab,setTab]=useState("tests");
+  const [tAns,setTAns]=useState([]);
+  const [pAns,setPAns]=useState([]);
+  const [left,setLeft]=useState(0);
+  const [confirmFin,setConfirmFin]=useState(false);
+  const [ai,setAi]=useState(null);            // [{ball,fikr}] yoki null (AI ishlamadi)
+  const [aiFail,setAiFail]=useState(false);
+  const doneRef=useRef(false);
+
+  function start(vv){
+    setV(vv); doneRef.current=false;
+    setTAns(vv.tests.map(()=>null)); setPAns(vv.problems.map(()=>""));
+    setLeft(vv.minutes*60); setTab("tests"); setConfirmFin(false); setAi(null); setAiFail(false);
+    setStage("run");
+  }
+  useEffect(()=>{ if(stage!=="run") return; const t=setInterval(()=>setLeft(s=>s-1),1000); return ()=>clearInterval(t); },[stage]);
+  useEffect(()=>{ if(stage==="run" && left<=0 && tAns.length) finish(); },[left,stage]); // vaqt tugadi — avto-yakun
+
+  async function finish(){
+    if(doneRef.current) return; doneRef.current=true;
+    setStage("grading");
+    let res=null, fail=false;
+    const answered=pAns.map(a=>(a||"").trim());
+    if(answered.some(a=>a)){
+      try{
+        const parts=v.problems.map((p,i)=>(
+          "ЗАДАЧА "+(i+1)+" ("+p.code+"). "+p.problem+
+          "\nЭталонное решение: "+p.steps.map(s=>s[0]+": "+s[1]).join(" | ")+
+          "\nИтоговый ответ эталона: "+p.answer+
+          "\nРешение студента: "+(answered[i]||"— (ответ не дан)")
+        )).join("\n\n");
+        const t=await callAI(
+          "Ты — строгий, но справедливый экзаменатор по МСФО. Проверь письменные решения студента по "+v.problems.length+" задачам. ГЛАВНОЕ: правильность ИТОГОВЫХ ЧИСЕЛ и хода решения (метод, формулы, проводки). Сверь каждое число студента с эталоном — прямо укажи, какие числа верны, а какие нет и каким должно быть верное число. Оформление, стиль и порядок слов не важны; засчитывай верные числа, даже если они записаны иначе (с пробелами, без валюты). Балл за задачу: от 0 до "+PREP_PROB_PTS+" (0 — нет решения или всё неверно; "+PREP_PROB_PTS+" — метод и все ключевые числа верны; промежуточный балл — за частично верное решение).\n\n"+parts+
+          "\n\nВерни ТОЛЬКО JSON-массив из "+v.problems.length+" объектов строго по порядку задач: [{\"n\":1,\"ball\":<0-"+PREP_PROB_PTS+">,\"fikr\":\"краткий разбор по-русски: какие числа/шаги верны, где именно ошибка и верное значение\"}]",
+          "Экзамен по курсу МСФО (IAS 2, IAS 16, IAS 23, IAS 37, IAS 38, IAS 40). Точная проверка чисел и метода в письменных решениях.",
+          1900
+        );
+        const arr=parseArr(t);
+        if(Array.isArray(arr)&&arr.length){
+          res=v.problems.map((_,i)=>{
+            const g=arr.find(x=>x&&+x.n===i+1)||arr[i]||{};
+            let b=Math.max(0,Math.min(PREP_PROB_PTS,Math.round(+g.ball||0)));
+            if(!answered[i]) b=0;
+            return {ball:b,fikr:answered[i]?String(g.fikr||""):"Ответ не дан."};
+          });
+        } else fail=true;
+      }catch(e){ fail=true; }
+    } else {
+      res=v.problems.map(()=>({ball:0,fikr:"Ответ не дан."}));
+    }
+    setAi(res); setAiFail(fail&&!res);
+    const tPts=v.tests.reduce((s,q,i)=>s+(tAns[i]===q.correct?1:0),0);
+    const pPts=res?res.reduce((s,r)=>s+r.ball,0):0;
+    const maxP=v.tests.length+(res?v.problems.length*PREP_PROB_PTS:0);
+    const pct=maxP?Math.round((tPts+pPts)/maxP*100):0;
+    const used=v.minutes*60-Math.max(0,left);
+    save({...prog,prepBest:Math.max(prog.prepBest||0,pct),prepLog:[{d:Date.now(),v:v.id,pct,t:used},...(prog.prepLog||[])].slice(0,8)});
+    if(track) track("exam","подготовка "+v.title+" "+pct+"%");
+    setStage("done");
+  }
+
+  if(stage==="intro") return(
     <div className="cc-view">
-      <div className="cc-prep-hero">
-        <div className="cc-prep-ring" style={{background:"conic-gradient(var(--teal) "+(overall*3.6)+"deg, var(--line) 0deg)"}}><div className="cc-prep-ring-in"><b>{overall}%</b><span>готовность</span></div></div>
-        <div className="cc-prep-vt">
-          <h3>{verdict}</h3>
-          <p>Оценка по теме: 40% карточки + 40% лучший тест + 20% домашние задания. {weak>0 ? "Слабых тем: "+weak+"." : "Слабых тем нет."}</p>
-          <div className="cc-prep-acts">
-            <button className="cc-btn amber" onClick={goMock}><Clock size={15}/> Пробный экзамен</button>
-            {prog.mockBest!==undefined && <span className="cc-prep-best"><Trophy size={14}/> Лучшая симуляция: {prog.mockBest}%</span>}
-          </div>
+      {PREP_VARIANTS.map(vv=>(
+        <div className="cc-quiz-i" key={vv.id}>
+          <Award size={28}/>
+          <h2>{vv.title} <span className="cc-pv-lvl">{vv.level}</span></h2>
+          <p><b>{vv.tests.length} тестов</b> (по 1 баллу) + <b>{vv.problems.length} задач</b> с письменным решением (по {PREP_PROB_PTS} балла, проверяет ИИ — числа и метод).<br/>Общее время на всё — <b>{vv.minutes} минут</b>. Ответы можно менять до финиша; правильные ответы и разбор — после завершения. Порог сдачи — <b>{PREP_PASS}%</b>.{prog.prepBest!==undefined && <> Лучший результат: <b>{prog.prepBest}%</b>.</>}</p>
+          <button className="cc-btn amber" onClick={()=>start(vv)}><Clock size={16}/> Начать экзамен ({vv.minutes} мин)</button>
         </div>
-      </div>
-      <div className="cc-prep-list">
-        {rows.map(({t,r})=>(
-          <button key={t.id} className="cc-prep-row" onClick={()=>openTopic(t.id)} title="Открыть тему">
-            <span className="cc-exam-code">{t.code}</span>
-            <span className="cc-prep-name">{t.title}</span>
-            {r<50 && <span className="cc-prep-weak"><AlertTriangle size={12}/> слабая</span>}
-            <span className="cc-prep-bar"><i style={{width:r+"%"}} className={r>=70?"g":r>=40?"m":"w"}/></span>
-            <b className="cc-prep-pct">{r}%</b>
-          </button>
-        ))}
-      </div>
-      {log.length>0 && (
+      ))}
+      {(prog.prepLog||[]).length>0 && (
         <div className="cc-prep-log">
-          <h4><ListChecks size={15}/> Последние симуляции</h4>
-          {log.map((l,i)=>(
-            <div key={i} className="cc-prep-log-r"><span>{new Date(l.d).toLocaleDateString("ru-RU")}</span><span>{l.n} вопр.</span><span><Clock size={12}/> {fmtMMSS(l.t)}</span><b className={l.pct>=60?"ok":"bad"}>{l.pct}%</b></div>
+          <h4><ListChecks size={15}/> Последние попытки</h4>
+          {(prog.prepLog||[]).map((l,i)=>(
+            <div key={i} className="cc-prep-log-r"><span>{new Date(l.d).toLocaleDateString("ru-RU")}</span><span>{l.v}</span><span><Clock size={12}/> {fmtMMSS(l.t)}</span><b className={l.pct>=PREP_PASS?"ok":"bad"}>{l.pct}%</b></div>
           ))}
         </div>
       )}
     </div>
   );
-}
 
-function PrepMock({prog,save,track}){
-  const [stage,setStage]=useState("intro"); // intro | run | done
-  const [count,setCount]=useState(20);
-  const [qs,setQs]=useState([]);
-  const [idx,setIdx]=useState(0);
-  const [ans,setAns]=useState([]);
-  const [left,setLeft]=useState(0);
-  const doneRef=useRef(false);
-  function start(n){ const k=Math.min(n,PREP_EXAM_POOL.length); const sh=buildMock(k); doneRef.current=false; setQs(sh); setAns(sh.map(()=>null)); setIdx(0); setLeft(k*MOCK_SEC_PER_Q); setStage("run"); }
-  function finish(){
-    if(doneRef.current) return; doneRef.current=true;
-    const c=qs.reduce((s,q,i)=>s+(ans[i]===q.correct?1:0),0);
-    const pct=qs.length?Math.round(c/qs.length*100):0;
-    const used=qs.length*MOCK_SEC_PER_Q-Math.max(0,left);
-    const entry={d:Date.now(),n:qs.length,pct,t:used};
-    const log=[entry,...(prog.mockLog||[])].slice(0,8);
-    save({...prog,mockBest:Math.max(prog.mockBest||0,pct),mockLog:log});
-    if(track) track("exam","симуляция "+pct+"%");
-    setStage("done");
-  }
-  useEffect(()=>{ if(stage!=="run") return; const t=setInterval(()=>setLeft(s=>s-1),1000); return ()=>clearInterval(t); },[stage]);
-  useEffect(()=>{ if(stage==="run" && left<=0 && qs.length) finish(); },[left,stage]); // vaqt tugadi — avtomatik yakun
-  if(stage==="intro") return(
-    <div className="cc-view">
-      <div className="cc-quiz-i">
-        <Clock size={28}/>
-        <h2>Пробный экзамен</h2>
-        <p>Условия как на реальном экзамене: <b>таймер</b> ({MOCK_SEC_PER_Q} сек. на вопрос), ответы можно менять до финиша, разбор ошибок — только в конце. Вопросы распределены по всем {TOPICS.length} темам курса.{prog.mockBest!==undefined && <> Лучший результат: <b>{prog.mockBest}%</b>.</>}</p>
-        <div className="cc-len">
-          <span className="cc-len-l">Сколько вопросов?</span>
-          <div className="cc-len-opts">
-            {[10,20,40].map(n=><button key={n} className={"cc-len-b"+(count===n?" on":"")} onClick={()=>setCount(n)}>{n}</button>)}
-          </div>
-          <span className="cc-prep-time"><Clock size={13}/> Время на тест: <b>{fmtMMSS(count*MOCK_SEC_PER_Q)}</b> · порог сдачи 60%</span>
-        </div>
-        <button className="cc-btn amber" onClick={()=>start(count)}><ArrowRight size={16}/> Начать симуляцию</button>
-      </div>
-    </div>
+  if(stage==="grading") return(
+    <div className="cc-view"><div className="cc-quiz-i"><Loader2 size={28} className="cc-spin"/><h2>Проверка…</h2><p>ИИ проверяет ваши решения задач: сверяет итоговые числа и ход решения с эталоном. Обычно это занимает 10–20 секунд — не закрывайте страницу.</p></div></div>
   );
+
   if(stage==="done"){
-    const res=qs.map((q,i)=>({q,choice:ans[i],correct:ans[i]===q.correct}));
-    const c=res.filter(x=>x.correct).length;
-    const pct=qs.length?Math.round(c/qs.length*100):0;
-    const used=qs.length*MOCK_SEC_PER_Q-Math.max(0,left);
-    const byCode={};
-    res.forEach(r=>{ const k=r.q.code; byCode[k]=byCode[k]||{c:0,n:0}; byCode[k].n++; if(r.correct) byCode[k].c++; });
-    const wrong=res.filter(x=>!x.correct);
+    const tPts=v.tests.reduce((s,q,i)=>s+(tAns[i]===q.correct?1:0),0);
+    const pPts=ai?ai.reduce((s,r)=>s+r.ball,0):0;
+    const maxP=v.tests.length+(ai?v.problems.length*PREP_PROB_PTS:0);
+    const pct=maxP?Math.round((tPts+pPts)/maxP*100):0;
+    const passed=pct>=PREP_PASS;
+    const used=v.minutes*60-Math.max(0,left);
     return(
       <div className="cc-view">
         <div className="cc-done">
           <div className="cc-done-p">{pct}%</div>
-          <h2>{pct>=80?"Отлично — экзамен по плечу!":pct>=60?"Порог пройден — закрепите слабые темы":"Пока рано — продолжайте тренироваться"}</h2>
-          <p>{c} из {qs.length} верно · время {fmtMMSS(used)} · порог 60% {pct>=60?"пройден":"не пройден"}</p>
+          <h2>{passed?"Экзамен сдан!":"Экзамен не сдан"}</h2>
+          {!passed && <p className="cc-pv-failnote">Результат ниже порога {PREP_PASS}%. Разберите ошибки ниже, повторите слабые темы и попробуйте ещё раз.</p>}
+          <p>Тесты: <b>{tPts} / {v.tests.length}</b>{ai && <> · Задачи (ИИ): <b>{pPts} / {v.problems.length*PREP_PROB_PTS}</b></>} · время {fmtMMSS(used)} из {v.minutes}:00</p>
+          {aiFail && <p className="cc-pv-failnote">Не удалось проверить задачи через ИИ (сеть или дневной лимит) — процент рассчитан только по тестам.</p>}
           <div className="cc-done-a"><button className="cc-btn amber" onClick={()=>setStage("intro")}><RefreshCw size={16}/> Ещё раз</button></div>
         </div>
-        <div className="cc-prep-brk">
-          <h4><PieChart size={15}/> Результат по темам</h4>
-          {Object.entries(byCode).map(([k,v])=>(
-            <div className="cc-prep-row static" key={k}>
-              <span className="cc-exam-code">{k}</span>
-              <span className="cc-prep-name">{(TOPICS.find(t=>t.code===k)||{}).title||""}</span>
-              <span className="cc-prep-bar"><i style={{width:(v.c/v.n*100)+"%"}} className={v.c/v.n>=0.7?"g":v.c/v.n>=0.4?"m":"w"}/></span>
-              <b className="cc-prep-pct">{v.c}/{v.n}</b>
+        <div className="cc-prep-mist">
+          <h4><ListChecks size={15}/> Разбор тестов</h4>
+          {v.tests.map((q,i)=>{
+            const ok=tAns[i]===q.correct;
+            return(
+              <div className="cc-prep-m" key={i}>
+                <div className="cc-prep-mq"><span className="cc-pv-num">{i+1}</span> <span className="cc-exam-code">{q.code}</span> {q.q}</div>
+                <div className={"cc-prep-ma "+(ok?"good":"bad")}>{ok?<CheckCircle2 size={13}/>:<XCircle size={13}/>} Ваш ответ: {tAns[i]===null||tAns[i]===undefined?"— (нет ответа)":q.options[tAns[i]]}</div>
+                {!ok && <div className="cc-prep-ma good"><CheckCircle2 size={13}/> Верно: {q.options[q.correct]}</div>}
+                <div className="cc-prep-mex">{q.explain}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="cc-prep-mist">
+          <h4><Calculator size={15}/> Разбор задач{ai?" — оценка ИИ":""}</h4>
+          {v.problems.map((p,i)=>(
+            <div className="cc-prep-m" key={i}>
+              <div className="cc-prep-mq"><span className="cc-pv-num">{i+1}</span> <span className="cc-exam-code">{p.code}</span> {p.title}{ai && <span className={"cc-pv-ball "+(ai[i].ball>=PREP_PROB_PTS*0.75?"g":ai[i].ball>=PREP_PROB_PTS*0.5?"m":"w")}>{ai[i].ball} / {PREP_PROB_PTS}</span>}</div>
+              {(pAns[i]||"").trim() ? <div className="cc-pv-stud"><b>Ваше решение:</b> {pAns[i]}</div> : <div className="cc-prep-ma bad"><XCircle size={13}/> Ответ не дан</div>}
+              {ai && ai[i].fikr && <div className="cc-prep-mex"><b>Разбор ИИ:</b> {ai[i].fikr}</div>}
+              <div className="cc-pv-ref">
+                <b>Эталонное решение:</b>
+                {p.steps.map((s,j)=><div className="cc-pv-step" key={j}><b>{s[0]}.</b> {s[1]}</div>)}
+                <div className="cc-pv-refans"><b>Ответ:</b> {p.answer}</div>
+              </div>
             </div>
           ))}
         </div>
-        {wrong.length>0 && (
-          <div className="cc-prep-mist">
-            <h4><XCircle size={15}/> Работа над ошибками ({wrong.length})</h4>
-            {wrong.map((r,i)=>(
-              <div className="cc-prep-m" key={i}>
-                <div className="cc-prep-mq"><span className="cc-exam-code">{r.q.code}</span> {r.q.q}</div>
-                <div className="cc-prep-ma bad"><XCircle size={13}/> Ваш ответ: {r.choice===null?"— (нет ответа)":r.q.options[r.choice]}</div>
-                <div className="cc-prep-ma good"><CheckCircle2 size={13}/> Верно: {r.q.options[r.q.correct]}</div>
-                <div className="cc-prep-mex">{r.q.explain}</div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     );
   }
-  const q=qs[idx];
-  if(!q) return null;
-  const answered=ans.filter(a=>a!==null).length;
+
+  const tDone=tAns.filter(a=>a!==null).length;
+  const pDone=pAns.filter(a=>(a||"").trim()).length;
+  const allDone=tDone===v.tests.length && pDone===v.problems.length;
   return(
     <div className="cc-view">
-      <div className="cc-quiz-top">Симуляция · вопрос {idx+1} / {qs.length} <span className="cc-exam-code">{q.code}</span><span className={"cc-prep-timer"+(left<=60?" danger":"")}><Clock size={13}/> {fmtMMSS(left)}</span></div>
-      <Track v={Math.round(answered/qs.length*100)}/>
-      <div className="cc-q">{q.q}</div>
-      <div className="cc-opts">{q.options.map((o,i)=>{
-        const sel=ans[idx]===i;
-        return <button key={i} className={"cc-opt"+(sel?" sel":"")} onClick={()=>setAns(a=>a.map((x,j)=>j===idx?i:x))}><span className="cc-opt-k">{String.fromCharCode(1040+i)}</span><span>{o}</span></button>;
-      })}</div>
-      <div className="cc-qnav cc-prep-nav">
-        <button className="cc-btn" disabled={idx===0} onClick={()=>setIdx(idx-1)}><ArrowLeft size={15}/> Назад</button>
-        {idx+1<qs.length
-          ? <button className="cc-btn amber" onClick={()=>setIdx(idx+1)}>Далее <ArrowRight size={15}/></button>
-          : <button className="cc-btn amber" onClick={finish}>Завершить <Trophy size={15}/></button>}
+      <div className="cc-pv-top">
+        <span className={"cc-prep-timer"+(left<=300?" danger":"")}><Clock size={13}/> {fmtMMSS(left)}</span>
+        <span className="cc-pv-cnt">Тесты: <b>{tDone}/{v.tests.length}</b> · Задачи: <b>{pDone}/{v.problems.length}</b></span>
       </div>
-      <p className="cc-prep-hint">Ответы можно менять до завершения. Разбор ошибок появится после финиша — как на реальном экзамене.</p>
+      <div className="cc-seg-tabs">
+        <button className={"cc-seg-tab"+(tab==="tests"?" on":"")} onClick={()=>setTab("tests")}><ClipboardList size={16}/> Тесты ({v.tests.length})</button>
+        <button className={"cc-seg-tab"+(tab==="problems"?" on":"")} onClick={()=>setTab("problems")}><Calculator size={16}/> Задачи ({v.problems.length})</button>
+      </div>
+      {tab==="tests" ? (
+        <div className="cc-pv-list">
+          {v.tests.map((q,i)=>(
+            <div className="cc-pv-q" key={i}>
+              <div className="cc-pv-qh"><span className="cc-pv-num">{i+1}</span><span className="cc-exam-code">{q.code}</span></div>
+              <div className="cc-pv-qt">{q.q}</div>
+              <div className="cc-opts">{q.options.map((o,j)=>(
+                <button key={j} className={"cc-opt"+(tAns[i]===j?" sel":"")} onClick={()=>setTAns(a=>a.map((x,k)=>k===i?j:x))}><span className="cc-opt-k">{String.fromCharCode(1040+j)}</span><span>{o}</span></button>
+              ))}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="cc-pv-list">
+          <p className="cc-note-lead">Пишите ход решения и итоговые числа — ИИ сверит именно числа и метод с эталоном.</p>
+          {v.problems.map((p,i)=>(
+            <div className="cc-pv-q" key={i}>
+              <div className="cc-pv-qh"><span className="cc-pv-num">{i+1}</span><span className="cc-exam-code">{p.code}</span><b className="cc-pv-pt">{p.title}</b></div>
+              <div className="cc-pv-prob">{p.problem}</div>
+              <textarea className="cc-ta" maxLength={1500} placeholder="Ваше решение: шаги и итоговые числа…" value={pAns[i]} onChange={e=>{const val=e.target.value; setPAns(a=>a.map((x,k)=>k===i?val:x));}}/>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="cc-pv-fin">
+        {confirmFin && !allDone
+          ? <div className="cc-pv-warn"><span><AlertTriangle size={15}/> Не отвечено: тесты — {v.tests.length-tDone}, задачи — {v.problems.length-pDone}. Завершить всё равно?</span>
+              <div className="cc-pv-warn-a"><button className="cc-btn amber" onClick={finish}>Да, завершить</button><button className="cc-btn" onClick={()=>setConfirmFin(false)}>Продолжить экзамен</button></div>
+            </div>
+          : <button className="cc-btn amber" onClick={()=>{ if(allDone) finish(); else setConfirmFin(true); }}><Trophy size={16}/> Завершить экзамен</button>}
+      </div>
     </div>
   );
 }
@@ -2906,6 +3011,35 @@ html,body{margin:0;padding:0;}
 .cc-prep-log-r b{margin-left:auto;font-size:13.5px;}
 .cc-prep-log-r b.ok{color:#2C7A4D;} .cc.dark .cc-prep-log-r b.ok{color:#5BC98C;}
 .cc-prep-log-r b.bad{color:var(--rose);}
+/* --- imtihon varianti (Подготовка к экзамену) --- */
+.cc-pv-top{position:sticky;top:74px;z-index:6;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surf);border:1px solid var(--line);border-radius:13px;padding:9px 14px;box-shadow:var(--shadow);margin-bottom:14px;}
+.cc-pv-cnt{font-size:12.5px;color:var(--ink2);font-weight:600;}
+.cc-pv-cnt b{color:var(--ink);}
+.cc-pv-list{display:flex;flex-direction:column;gap:14px;}
+.cc-pv-q{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);}
+.cc-pv-qh{display:flex;align-items:center;gap:9px;margin-bottom:10px;flex-wrap:wrap;}
+.cc-pv-pt{font-size:14px;color:var(--ink);font-family:var(--sans);}
+.cc-pv-num{min-width:26px;height:26px;padding:0 4px;border-radius:8px;background:var(--tealT);color:var(--tealD);font-weight:800;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:var(--mono);}
+.cc-pv-qt{font-size:14px;font-weight:700;color:var(--ink);line-height:1.55;margin-bottom:11px;}
+.cc-pv-prob{font-size:13.5px;color:var(--ink);line-height:1.65;margin-bottom:11px;}
+.cc-pv-q .cc-ta{margin-bottom:0;}
+.cc-pv-fin{margin-top:18px;display:flex;justify-content:center;}
+.cc-pv-fin>.cc-btn{padding:13px 26px;font-size:14px;}
+.cc-pv-warn{background:var(--rose-bg);border:1px solid var(--rose);border-radius:14px;padding:14px 18px;font-size:13.5px;color:var(--ink);display:flex;flex-direction:column;gap:11px;align-items:center;text-align:center;width:100%;}
+.cc-pv-warn span{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:center;}
+.cc-pv-warn-a{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.cc-pv-lvl{font-size:12px;font-weight:700;color:var(--tealD);background:var(--tealT);border-radius:999px;padding:4px 10px;vertical-align:middle;margin-left:6px;}
+.cc-pv-ball{margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:800;border-radius:999px;padding:4px 10px;flex:none;}
+.cc-pv-ball.g{background:rgba(63,164,106,.15);color:#2C7A4D;} .cc.dark .cc-pv-ball.g{color:#5BC98C;}
+.cc-pv-ball.m{background:var(--amb-bg);color:var(--amber2);}
+.cc-pv-ball.w{background:var(--rose-bg);color:var(--rose);}
+.cc-pv-stud{font-size:13px;color:var(--ink);border:1px dashed var(--line);border-radius:10px;padding:10px 13px;margin:8px 0;line-height:1.6;white-space:pre-wrap;}
+.cc-pv-stud b{display:block;margin-bottom:4px;}
+.cc-pv-ref{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;font-size:13px;color:var(--ink2);line-height:1.6;}
+.cc-pv-ref>b{color:var(--ink);display:block;margin-bottom:6px;}
+.cc-pv-step{margin:4px 0;} .cc-pv-step b{color:var(--ink);}
+.cc-pv-refans{margin-top:8px;background:var(--tealT);border-radius:10px;padding:9px 12px;color:var(--ink);}
+.cc-pv-failnote{color:var(--rose);font-weight:600;font-size:13px;}
 .cc-q{font-family:var(--serif);font-size:20px;font-weight:600;line-height:1.36;margin:16px 0 18px;letter-spacing:-.01em;}
 .cc-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
 .cc-opt{display:flex;align-items:center;gap:12px;text-align:left;background:var(--surf);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;font-family:var(--sans);transition:.14s;box-shadow:var(--shadow);}
