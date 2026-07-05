@@ -107,7 +107,7 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-5",
         max_tokens: Math.min(Number(maxTokens) || 900, 2000),
         system:
           "Ты — преподаватель МСФО для начинающего, по-русски, кратко и по делу. " +
