@@ -213,13 +213,18 @@ export default function App(){
 
           {modal==="recent" && <>
             <div className="cc-mtitle" style={{marginBottom:4}}>Недавно добавленные</div>
-            <div className="cc-msub" style={{marginBottom:14}}>Новые темы курса — последние сверху.</div>
+            <div className="cc-msub" style={{marginBottom:14}}>Новые разделы и темы курса — последние сверху.</div>
             <div className="cc-rlist">
-              {[...TOPICS].reverse().slice(0,6).map((t,i)=>{ const n=(t.theory||[]).length; const w=(n%10===1&&n%100!==11)?"урок":((n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"урока":"уроков"); return (
+              <button className="cc-ritem" onClick={()=>{ setModal(null); setView("prep"); }}>
+                <span className="cc-rico"><Target size={16}/></span>
+                <span className="cc-rmid"><span className="cc-rtitle">Подготовка к экзамену</span><span className="cc-rmeta">{PREP_VARIANTS.length} вариантов · таймер · проверка ИИ</span></span>
+                <span className="cc-rnew">новое</span>
+                <ArrowRight size={15}/>
+              </button>
+              {[...TOPICS].reverse().slice(0,6).map((t)=>{ const n=(t.theory||[]).length; const w=(n%10===1&&n%100!==11)?"урок":((n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"урока":"уроков"); return (
                 <button className="cc-ritem" key={t.id} onClick={()=>{ setModal(null); setTopicId(t.id); setTab("theory"); setView("topic"); track("topic",(TMAP[t.id]||{}).code||t.id); }}>
                   <span className="cc-rico"><BookOpen size={16}/></span>
                   <span className="cc-rmid"><span className="cc-rtitle">{t.title}</span><span className="cc-rmeta">{t.code} · {n} {w}</span></span>
-                  {i===0 && <span className="cc-rnew">новое</span>}
                   <ArrowRight size={15}/>
                 </button>
               ); })}
@@ -1105,7 +1110,7 @@ function AdminView({theme,toggleTheme}){
       <button className="cc-icon-btn cc-gate-th" onClick={toggleTheme} aria-label="Сменить тему">{theme==="dark"?<Sun size={17}/>:<Moon size={17}/>}</button>
       <div className="cc-gate-card">
         <div className="cc-gate-logo"><Sparkles size={28}/></div>
-        <h1 className="cc-gate-t">MCFO Kurs AI · Админ</h1>
+        <h1 className="cc-gate-t">ABCO Academy · Админ</h1>
         <p className="cc-gate-s">Введите пароль преподавателя, чтобы посмотреть активность учеников.</p>
         <input className="cc-modal-in" type="password" placeholder="Пароль" value={pass} autoFocus
           onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&load(pass)}/>
@@ -1144,8 +1149,8 @@ function AdminView({theme,toggleTheme}){
   return(<>
     <header className="cc-top">
       <div className="cc-brand" style={{cursor:"default"}}>
-        <span className="cc-brand-m"><Sparkles size={19}/></span>
-        <span><span className="cc-brand-n">MCFO Kurs AI · админ</span><span className="cc-brand-s">панель преподавателя</span></span>
+        <span className="cc-brand-m abco-logo">abco</span>
+        <span><span className="cc-brand-n">ABCO Academy · админ</span><span className="cc-brand-s">панель преподавателя</span></span>
       </div>
       <div className="cc-top-r">
         {loaded && <span className="cc-adm-upd">обновлено {loaded.toTimeString().slice(0,5)}</span>}
