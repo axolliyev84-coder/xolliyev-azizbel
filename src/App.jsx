@@ -936,7 +936,7 @@ function PrepExam({prog,save,track}){
     const pct=maxP?Math.round((tPts+pPts)/maxP*100):0;
     const used=v.minutes*60-Math.max(0,left);
     save({...prog,prepBest:Math.max(prog.prepBest||0,pct),prepLog:[{d:Date.now(),v:v.id,pct,t:used},...(prog.prepLog||[])].slice(0,8)});
-    if(track) track("exam","подготовка "+v.title+" "+pct+"%");
+    if(track) track("exam","подготовка "+v.title+" "+pct+"% · "+fmtMMSS(used));
     setStage("done");
   }
 
@@ -1144,6 +1144,15 @@ function AdminView({theme,toggleTheme}){
   const tc={}; for(const e of events){ if(e.t==="topic"){ const k=e.d||"—"; tc[k]=(tc[k]||0)+1; } }
   const topTopics=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxTopic=Math.max(1,...topTopics.map(x=>x[1]));
+  const TOTAL_CARDS=TOPICS.reduce((s,t)=>s+t.cards.length,0);
+  // Подготовка к экзамену: "подготовка Вариант 1 72%" yoki "... 72% · 32:10" eventlaridan urinishlar
+  const prepByUser={};
+  for(const e of events){ if(e.t!=="exam"||!/^подготовка/.test(e.d||"")) continue;
+    const m=/^подготовка\s+(.+?)\s+(\d+)%(?:\s*·\s*([\d:]+))?/.exec(e.d||""); if(!m) continue;
+    const u=e.u||"—"; (prepByUser[u]=prepByUser[u]||[]).push({v:m[1],pct:+m[2],time:m[3]||"",ts:e.ts||0}); }
+  const prepUsers=Object.entries(prepByUser).map(([u,list])=>({u,list,best:Math.max(...list.map(x=>x.pct)),last:Math.max(...list.map(x=>x.ts))})).sort((a,b)=>b.last-a.last);
+  const prepTotal=prepUsers.reduce((s,x)=>s+x.list.length,0);
+  const plu=(n,a,b,c)=>{ const x=n%100,y=n%10; return (x>10&&x<20)?c:(y===1?a:(y>=2&&y<=4?b:c)); };
   const TICON={login:<LogIn size={15}/>,topic:<BookOpen size={15}/>,quiz:<ClipboardList size={15}/>,exam:<Award size={15}/>,feedback:<MessageSquare size={15}/>};
   const TTXT={login:"вошёл(ла) в систему",topic:"открыл(а) тему",quiz:"тест",exam:"экзамен",feedback:"сообщил(а) об ошибке:"};
   return(<>
@@ -1168,20 +1177,6 @@ function AdminView({theme,toggleTheme}){
         <div className="cc-stat"><ClipboardList size={16}/><b>{testsDone}</b><small>тестов сдано</small></div>
         <div className="cc-stat"><Trophy size={16}/><b>{avgScore}%</b><small>ср. балл</small></div>
       </div>
-      {(()=>{ const fb=events.filter(e=>e.t==="feedback"); return fb.length>0 ? (
-        <div className="cc-fbsec">
-          <div className="cc-note-lead" style={{margin:"0 0 8px"}}><MessageSquare size={15} style={{verticalAlign:"-2px",marginRight:6,color:"var(--amber)"}}/>Сообщения об ошибках · {fb.length}</div>
-          <div className="cc-adm-feed">
-            {fb.slice(0,40).map((e,i)=>(
-              <div className="cc-adm-fi" key={i}>
-                <span className="cc-adm-ic" style={{color:"var(--amber)"}}><MessageSquare size={15}/></span>
-                <span className="cc-adm-ft"><b>{e.u}</b> — {e.d}</span>
-                <span className="cc-adm-fts">{fmtTime(e.ts)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null; })()}
       {events.length===0 ? <div className="cc-empty"><Brain size={26}/><p>Пока нет данных. Как только ученики начнут заходить, здесь появится их активность — входы, открытые темы и результаты тестов.</p></div> :
       <>
         <div className="cc-adm-two">
@@ -1199,6 +1194,19 @@ function AdminView({theme,toggleTheme}){
             ))}
           </div>
         </div>
+        <div className="cc-apanel" style={{marginBottom:18}}>
+          <div className="cc-apanel-t"><Award size={15}/> Подготовка к экзамену · {prepTotal} {plu(prepTotal,"попытка","попытки","попыток")}</div>
+          {prepUsers.length===0 ? <div style={{fontSize:13,color:"var(--mut)"}}>Пробные экзамены ещё никто не сдавал. Результаты появятся здесь: кто сдавал, сколько раз и с каким баллом.</div> :
+           prepUsers.map(p=>(
+            <div className="cc-prow" key={p.u}>
+              <span className="cc-adm-u"><span className="cc-avatar sm">{(p.u[0]||"?").toUpperCase()}</span>{p.u}</span>
+              <span className="cc-prow-meta">{p.list.length} {plu(p.list.length,"попытка","попытки","попыток")} · лучший <b style={{color:p.best>=60?"var(--green)":"var(--red)"}}>{p.best}%</b></span>
+              <span className="cc-atts">{p.list.map((a,i)=>(
+                <span key={i} className={"cc-att "+(a.pct>=60?"ok":"no")} title={fmtTime(a.ts)+(a.time?" · время "+a.time:"")}>{a.v.replace("Вариант ","В")} · {a.pct}%</span>
+              ))}</span>
+            </div>
+           ))}
+        </div>
         <div className="cc-note-lead" style={{margin:"4px 0 8px"}}>Ученики · {users.length}</div>
         <div className="cc-adm-tbl">
           <div className="cc-adm-r head"><span>Ученик</span><span>Посл. вход</span><span className="n">Входов</span><span className="n">Тем</span><span className="n">Тестов</span><span className="n">Балл</span><span className="n">Карточки</span></div>
@@ -1208,10 +1216,24 @@ function AdminView({theme,toggleTheme}){
               <span className="cc-adm-d">{fmtTime(u.last)}</span>
               <span className="n">{u.logins}</span><span className="n">{u.topics}</span><span className="n">{u.tests}</span>
               <span className="n"><b style={{color:u.best>=80?"var(--green)":u.best>=60?"var(--amber)":"var(--ink2)"}}>{u.tests?u.best+"%":"—"}</b></span>
-              <span className="n">{u.cards}/41</span>
+              <span className="n">{u.cards}/{TOTAL_CARDS}</span>
             </div>
           ))}
         </div>
+        {(()=>{ const fb=events.filter(e=>e.t==="feedback"); return fb.length>0 ? (
+          <div className="cc-fbsec" style={{marginTop:18}}>
+            <div className="cc-note-lead" style={{margin:"0 0 8px"}}><MessageSquare size={15} style={{verticalAlign:"-2px",marginRight:6,color:"var(--amber)"}}/>Сообщения об ошибках · {fb.length}</div>
+            <div className="cc-adm-feed">
+              {fb.slice(0,40).map((e,i)=>(
+                <div className="cc-adm-fi" key={i}>
+                  <span className="cc-adm-ic" style={{color:"var(--amber)"}}><MessageSquare size={15}/></span>
+                  <span className="cc-adm-ft"><b>{e.u}</b> — {e.d}</span>
+                  <span className="cc-adm-fts">{fmtTime(e.ts)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null; })()}
         <div className="cc-feed-head"><span className="cc-note-lead" style={{margin:0}}>Последние действия</span><button className="cc-btn ghost sm" disabled={clearing||events.length===0} onClick={clearHistory} title="Очистить всю историю">{clearing?<span className="cc-sp"><Loader2 size={14} className="cc-spin"/> Очистка…</span>:<><Trash2 size={14}/> Очистить историю</>}</button></div>
         <div className="cc-adm-feed">
           {events.slice(0,30).map((e,i)=>(

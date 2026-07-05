@@ -489,6 +489,16 @@ html,body{margin:0;padding:0;}
 .cc-adm-r .n{text-align:right;font-family:var(--mono);font-weight:600;}
 .cc-adm-u{display:flex;align-items:center;gap:9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cc-adm-d{color:var(--ink2);font-size:12.5px;}
+/* admin: Подготовка к экзамену natijalari */
+.cc-prow{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line);flex-wrap:wrap;}
+.cc-prow:first-of-type{border-top:none;}
+.cc-prow .cc-adm-u{min-width:150px;}
+.cc-prow-meta{font-size:12.5px;color:var(--mut);white-space:nowrap;}
+.cc-atts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end;}
+.cc-att{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;cursor:default;}
+.cc-att.ok{background:var(--greenT);color:var(--green);}
+.cc-att.no{background:var(--redT);color:var(--red);}
+@media(max-width:640px){ .cc-atts{margin-left:0;width:100%;justify-content:flex-start;} }
 .cc-adm-feed{display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);}
 .cc-adm-fi{display:flex;align-items:center;gap:11px;padding:11px 15px;background:var(--surf);font-size:13px;}
 .cc-adm-fi:nth-child(even){background:var(--surf2);}
