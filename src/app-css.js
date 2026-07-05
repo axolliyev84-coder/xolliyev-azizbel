@@ -347,7 +347,7 @@ html,body{margin:0;padding:0;}
 .cc-pv-pt{font-size:14px;color:var(--ink);font-family:var(--sans);}
 .cc-pv-num{min-width:26px;height:26px;padding:0 4px;border-radius:8px;background:var(--tealT);color:var(--tealD);font-weight:800;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:var(--mono);}
 .cc-pv-qt{font-size:14px;font-weight:700;color:var(--ink);line-height:1.55;margin-bottom:11px;}
-.cc-pv-prob{font-size:13.5px;color:var(--ink);line-height:1.65;margin-bottom:11px;}
+.cc-pv-prob{font-size:13.5px;color:var(--ink);line-height:1.65;margin-bottom:11px;white-space:pre-line;}
 .cc-pv-q .cc-ta{margin-bottom:0;}
 .cc-pv-fin{margin-top:18px;display:flex;justify-content:center;}
 .cc-pv-fin>.cc-btn{padding:13px 26px;font-size:14px;}
