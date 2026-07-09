@@ -6,7 +6,7 @@ import {
   FileText, Brain, CheckCircle2, XCircle, Send, ListChecks, Award, PenTool,
   Sun, Moon, LogIn, LogOut, Gauge, Flame, Star, PieChart, DollarSign, BarChart3,
   Landmark, Scale, Coins, Percent, Receipt, TrendingUp, Building2, Trash2,
-  Menu, User, Clock, MessageSquare
+  Menu, User, Clock, MessageSquare, Camera
 } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { fmt, TOPICS, TMAP, HARD_PROBLEMS, EXAM_PROBLEMS, EXAM_TEST_POOL } from "./course-data.js";
@@ -21,15 +21,16 @@ function sGet(k){ try{ return Promise.resolve(localStorage.getItem(k)); }catch{ 
 function sSet(k,v){ try{ localStorage.setItem(k,v); }catch{} return Promise.resolve(); }
 
 /* ===================== AI ===================== */
-async function callAI(prompt, ground, maxTokens=900){
+async function callAI(prompt, ground, maxTokens=900, images){
   // Kalit serverda (api/chat.js) saqlanadi — brauzerga umuman chiqmaydi.
   // Foydalanuvchi ismini ham yuboramiz: server kunlik limitni shu bo'yicha hisoblaydi.
+  // images (ixtiyoriy): [{media_type,data,label}] — rasmli javob (Claude vision).
   let user="";
   try{ const u=JSON.parse(localStorage.getItem(UKEY)||"null"); user=(u&&u.name)||""; }catch{}
   const res = await fetch("/api/chat",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ prompt, ground, maxTokens, user })
+    body: JSON.stringify({ prompt, ground, maxTokens, user, images })
   });
   if(res.status===429||res.status===403){ let m=""; try{ m=(await res.json()).error; }catch{} throw new Error(m||"Лимит запросов исчерпан. Попробуйте позже."); }
   if(!res.ok) throw new Error("API "+res.status);
@@ -43,6 +44,31 @@ function parseArr(t){
   if(s!==-1&&e>s){try{return JSON.parse(c.slice(s,e+1));}catch{}}
   return [];
 }
+// Istalgan turdagi rasmni o'qib, kichraytirib (uzun tomoni ≤ maxEdge) JPEG data-URL qaytaradi.
+// Shu bilan server body limitiga sig'adi va Claude vision uchun optimal bo'ladi.
+function fileToImage(file, maxEdge=1568, quality=0.74){
+  return new Promise((resolve,reject)=>{
+    if(!file||!file.type||!/^image\//.test(file.type)){ reject(new Error("Это не изображение")); return; }
+    const fr=new FileReader();
+    fr.onerror=()=>reject(new Error("Не удалось прочитать файл"));
+    fr.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error("Не удалось открыть изображение (возможно, неподдерживаемый формат)"));
+      img.onload=()=>{
+        let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+        if(!w||!h){ reject(new Error("Пустое изображение")); return; }
+        const sc=Math.min(1, maxEdge/Math.max(w,h));
+        w=Math.max(1,Math.round(w*sc)); h=Math.max(1,Math.round(h*sc));
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+        try{ resolve(cv.toDataURL("image/jpeg",quality)); }catch(err){ reject(new Error("Ошибка обработки изображения")); }
+      };
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function dataUrlParts(u){ const m=/^data:([^;]+);base64,(.*)$/.exec(u||""); return m?{media_type:m[1],data:m[2]}:null; }
 /* ===================== ANALYTICS (admin tracking) ===================== */
 function sendEvent(payload){ try{ fetch("/api/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true}); }catch{} }
 function progStats(prog){ let cards=0,sum=0,n=0; for(const t of TOPICS){ const p=prog&&prog[t.id]; if(p&&p.cardsKnown) cards+=p.cardsKnown.length; sum+=(p&&p.quizBest)||0; n++; } return {cards, avg: n?Math.round(sum/n):0}; }
@@ -877,6 +903,9 @@ function PrepExam({prog,save,track}){
   const [tQs,setTQs]=useState([]);            // joriy urinish uchun aralashtirilgan testlar
   const [tAns,setTAns]=useState([]);
   const [pAns,setPAns]=useState([]);
+  const [pImg,setPImg]=useState([]);          // har masalaga biriktirilgan rasm (data-URL) yoki null
+  const [imgErr,setImgErr]=useState({});      // rasm yuklashdagi xatolar (index -> matn)
+  const [imgBusy,setImgBusy]=useState({});    // rasm qayta ishlanmoqda
   const [left,setLeft]=useState(0);
   const [confirmFin,setConfirmFin]=useState(false);
   const [ai,setAi]=useState(null);            // [{ball,fikr}] yoki null (AI ishlamadi)
@@ -888,8 +917,17 @@ function PrepExam({prog,save,track}){
   function start(vv){
     setV(vv); doneRef.current=false;
     setTQs(vv.tests.map(shuffleOpts)); setTAns(vv.tests.map(()=>null)); setPAns(vv.problems.map(()=>""));
+    setPImg(vv.problems.map(()=>null)); setImgErr({}); setImgBusy({});
     setLeft(vv.minutes*60); setTab("tests"); setConfirmFin(false); setAi(null); setAiFail(false);
     setCnt(3); setStage("count");
+  }
+  async function onPickImg(i,file){
+    if(!file) return;
+    setImgErr(e=>{const n={...e}; delete n[i]; return n;});
+    setImgBusy(b=>({...b,[i]:true}));
+    try{ const url=await fileToImage(file); setPImg(a=>a.map((x,k)=>k===i?url:x)); }
+    catch(err){ setImgErr(e=>({...e,[i]:(err&&err.message)||"Не удалось загрузить изображение"})); }
+    finally{ setImgBusy(b=>{const n={...b}; delete n[i]; return n;}); }
   }
   useEffect(()=>{ if(stage!=="intro") return; const t=setInterval(()=>setMoto(m=>(m+1)%PREP_MOTO.length),5000); return ()=>clearInterval(t); },[stage]);
   useEffect(()=>{ if(stage!=="count") return; const t=setInterval(()=>setCnt(c=>c-1),850); return ()=>clearInterval(t); },[stage]);
@@ -902,27 +940,40 @@ function PrepExam({prog,save,track}){
     setStage("grading");
     let res=null, fail=false;
     const answered=pAns.map(a=>(a||"").trim());
-    if(answered.some(a=>a)){
+    const hasImg=v.problems.map((_,i)=>!!pImg[i]);
+    const given=v.problems.map((_,i)=>answered[i]||hasImg[i]);
+    if(given.some(Boolean)){
       try{
-        const parts=v.problems.map((p,i)=>(
-          "ЗАДАЧА "+(i+1)+" ("+p.code+"). "+p.problem+
-          "\nЭталонное решение: "+p.steps.map(s=>s[0]+": "+s[1]).join(" | ")+
-          "\nИтоговый ответ эталона: "+p.answer+
-          "\nРешение студента: "+(answered[i]||"— (ответ не дан)")
-        )).join("\n\n");
+        const imgs=[];
+        const parts=v.problems.map((p,i)=>{
+          let stu;
+          if(hasImg[i]){
+            const pr=dataUrlParts(pImg[i]);
+            const label="Изображение "+(imgs.length+1);
+            if(pr) imgs.push({media_type:pr.media_type,data:pr.data,label:label+" — решение задачи "+(i+1)});
+            stu="решение приложено ФОТОГРАФИЕЙ рукописи ("+label+" ниже). Внимательно прочитай почерк, извлеки итоговые числа и ход решения."+(answered[i]?(" Дополнительно текстом: "+answered[i]):"");
+          } else {
+            stu=answered[i]||"— (ответ не дан)";
+          }
+          return "ЗАДАЧА "+(i+1)+" ("+p.code+"). "+p.problem+
+            "\nЭталонное решение: "+p.steps.map(s=>s[0]+": "+s[1]).join(" | ")+
+            "\nИтоговый ответ эталона: "+p.answer+
+            "\nРешение студента: "+stu;
+        }).join("\n\n");
         const t=await callAI(
-          "Ты — строгий, но справедливый экзаменатор по МСФО. Проверь письменные решения студента по "+v.problems.length+" задачам. ГЛАВНОЕ: правильность ИТОГОВЫХ ЧИСЕЛ и хода решения (метод, формулы, проводки). Сверь каждое число студента с эталоном — прямо укажи, какие числа верны, а какие нет и каким должно быть верное число. Оформление, стиль и порядок слов не важны; засчитывай верные числа, даже если они записаны иначе (с пробелами, без валюты). Балл за задачу: от 0 до "+PREP_PROB_PTS+" (0 — нет решения или всё неверно; "+PREP_PROB_PTS+" — метод и все ключевые числа верны; промежуточный балл — за частично верное решение).\n\n"+parts+
+          "Ты — строгий, но справедливый экзаменатор по МСФО. Проверь решения студента по "+v.problems.length+" задачам. Часть решений приложена ФОТОГРАФИЯМИ рукописного текста (изображения в конце сообщения) — внимательно прочитай почерк и извлеки все итоговые числа и шаги, даже если написано неаккуратно; если фото совсем нечитаемо — так и напиши и снизь балл. ГЛАВНОЕ: правильность ИТОГОВЫХ ЧИСЕЛ и хода решения (метод, формулы, проводки). Сверь каждое число студента с эталоном — прямо укажи, какие числа верны, а какие нет и каким должно быть верное число. Оформление, стиль и порядок слов не важны; засчитывай верные числа, даже если они записаны иначе (с пробелами, без валюты). Балл за задачу: от 0 до "+PREP_PROB_PTS+" (0 — нет решения или всё неверно; "+PREP_PROB_PTS+" — метод и все ключевые числа верны; промежуточный балл — за частично верное решение).\n\n"+parts+
           "\n\nВерни ТОЛЬКО JSON-массив из "+v.problems.length+" объектов строго по порядку задач: [{\"n\":1,\"ball\":<0-"+PREP_PROB_PTS+">,\"fikr\":\"краткий разбор по-русски: какие числа/шаги верны, где именно ошибка и верное значение\"}]",
-          "Экзамен по курсу МСФО (IAS 2, IAS 16, IAS 23, IAS 37, IAS 38, IAS 40). Точная проверка чисел и метода в письменных решениях.",
-          1900
+          "Экзамен по курсу МСФО (IAS 2, IAS 16, IAS 23, IAS 36, IAS 37, IAS 38, IAS 40). Точная проверка чисел и метода; решения могут быть на фото рукописи.",
+          1900,
+          imgs.length?imgs:undefined
         );
         const arr=parseArr(t);
         if(Array.isArray(arr)&&arr.length){
           res=v.problems.map((_,i)=>{
             const g=arr.find(x=>x&&+x.n===i+1)||arr[i]||{};
             let b=Math.max(0,Math.min(PREP_PROB_PTS,Math.round(+g.ball||0)));
-            if(!answered[i]) b=0;
-            return {ball:b,fikr:answered[i]?String(g.fikr||""):"Ответ не дан."};
+            if(!given[i]) b=0;
+            return {ball:b,fikr:given[i]?String(g.fikr||""):"Ответ не дан."};
           });
         } else fail=true;
       }catch(e){ fail=true; }
@@ -1023,7 +1074,10 @@ function PrepExam({prog,save,track}){
           {v.problems.map((p,i)=>(
             <div className="cc-prep-m" key={i}>
               <div className="cc-prep-mq"><span className="cc-pv-num">{i+1}</span> <span className="cc-exam-code">{p.code}</span> {p.title}{ai && <span className={"cc-pv-ball "+(ai[i].ball>=PREP_PROB_PTS*0.75?"g":ai[i].ball>=PREP_PROB_PTS*0.5?"m":"w")}>{ai[i].ball} / {PREP_PROB_PTS}</span>}</div>
-              {(pAns[i]||"").trim() ? <div className="cc-pv-stud"><b>Ваше решение:</b> {pAns[i]}</div> : <div className="cc-prep-ma bad"><XCircle size={13}/> Ответ не дан</div>}
+              {pImg[i]
+                ? <div className="cc-pv-stud"><b>Ваше решение (фото):</b><a href={pImg[i]} target="_blank" rel="noreferrer"><img className="cc-imgthumb lg" src={pImg[i]} alt="решение"/></a>{(pAns[i]||"").trim() && <div className="cc-pv-studtxt">{pAns[i]}</div>}</div>
+                : (pAns[i]||"").trim() ? <div className="cc-pv-stud"><b>Ваше решение:</b> {pAns[i]}</div>
+                : <div className="cc-prep-ma bad"><XCircle size={13}/> Ответ не дан</div>}
               {ai && ai[i].fikr && <div className="cc-prep-mex"><b>Разбор ИИ:</b> {ai[i].fikr}</div>}
               <div className="cc-pv-ref">
                 <b>Эталонное решение:</b>
@@ -1038,7 +1092,7 @@ function PrepExam({prog,save,track}){
   }
 
   const tDone=tAns.filter(a=>a!==null).length;
-  const pDone=pAns.filter(a=>(a||"").trim()).length;
+  const pDone=v.problems.filter((_,i)=>(pAns[i]||"").trim()||pImg[i]).length;
   const allDone=tDone===v.tests.length && pDone===v.problems.length;
   return(
     <div className="cc-view">
@@ -1064,12 +1118,20 @@ function PrepExam({prog,save,track}){
         </div>
       ) : (
         <div className="cc-pv-list">
-          <p className="cc-note-lead">Пишите ход решения и итоговые числа — ИИ сверит именно числа и метод с эталоном.</p>
+          <p className="cc-note-lead">Напишите ход решения текстом <b>или</b> сфотографируйте рукописное решение и прикрепите фото — ИИ прочитает числа и сверит с эталоном.</p>
           {v.problems.map((p,i)=>(
             <div className="cc-pv-q" key={i}>
               <div className="cc-pv-qh"><span className="cc-pv-num">{i+1}</span><span className="cc-exam-code">{p.code}</span><b className="cc-pv-pt">{p.title}</b></div>
               <div className="cc-pv-prob">{p.problem}</div>
-              <textarea className="cc-ta" maxLength={1500} placeholder="Ваше решение: шаги и итоговые числа…" value={pAns[i]} onChange={e=>{const val=e.target.value; setPAns(a=>a.map((x,k)=>k===i?val:x));}}/>
+              <textarea className="cc-ta" maxLength={1500} placeholder="Ваше решение текстом: шаги и итоговые числа… (или прикрепите фото ниже)" value={pAns[i]} onChange={e=>{const val=e.target.value; setPAns(a=>a.map((x,k)=>k===i?val:x));}}/>
+              <div className="cc-imgrow">
+                <label className={"cc-imgbtn"+(imgBusy[i]?" busy":"")}>
+                  <input type="file" accept="image/*" hidden disabled={!!imgBusy[i]} onChange={e=>{const f=e.target.files&&e.target.files[0]; e.target.value=""; onPickImg(i,f);}}/>
+                  {imgBusy[i]?<><Loader2 size={15} className="cc-spin"/> Обработка…</>:<><Camera size={15}/> {pImg[i]?"Заменить фото":"Прикрепить фото решения"}</>}
+                </label>
+                {pImg[i] && <span className="cc-imgprev"><img className="cc-imgthumb" src={pImg[i]} alt="решение"/><button type="button" className="cc-imgdel" onClick={()=>setPImg(a=>a.map((x,k)=>k===i?null:x))}><X size={13}/> Убрать</button></span>}
+              </div>
+              {imgErr[i] && <div className="cc-prep-ma bad" style={{marginTop:6}}><AlertTriangle size={13}/> {imgErr[i]}</div>}
             </div>
           ))}
         </div>

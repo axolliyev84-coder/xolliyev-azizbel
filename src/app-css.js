@@ -361,6 +361,17 @@ html,body{margin:0;padding:0;}
 .cc-pv-ball.w{background:var(--rose-bg);color:var(--rose);}
 .cc-pv-stud{font-size:13px;color:var(--ink);border:1px dashed var(--line);border-radius:10px;padding:10px 13px;margin:8px 0;line-height:1.6;white-space:pre-wrap;}
 .cc-pv-stud b{display:block;margin-bottom:4px;}
+.cc-pv-studtxt{margin-top:8px;}
+/* imtihon: rasm yuklash */
+.cc-imgrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;}
+.cc-imgbtn{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--tealD);background:var(--tealT);border:1px solid var(--teal);border-radius:11px;padding:9px 14px;cursor:pointer;font-family:var(--sans);transition:.15s;}
+.cc-imgbtn:hover{background:var(--teal);color:#fff;}
+.cc-imgbtn.busy{opacity:.7;cursor:default;}
+.cc-imgprev{display:inline-flex;align-items:center;gap:9px;}
+.cc-imgthumb{width:52px;height:52px;object-fit:cover;border-radius:9px;border:1px solid var(--line);box-shadow:var(--shadow);}
+.cc-imgthumb.lg{width:auto;max-width:min(260px,100%);height:auto;max-height:200px;object-fit:contain;display:block;margin:6px 0;cursor:zoom-in;}
+.cc-imgdel{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--red);background:var(--redT);border:none;border-radius:9px;padding:6px 10px;cursor:pointer;font-family:var(--sans);}
+.cc-imgdel:hover{background:var(--red);color:#fff;}
 .cc-pv-ref{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;font-size:13px;color:var(--ink2);line-height:1.6;}
 .cc-pv-ref>b{color:var(--ink);display:block;margin-bottom:6px;}
 .cc-pv-step{margin:4px 0;} .cc-pv-step b{color:var(--ink);}

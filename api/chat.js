@@ -59,10 +59,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt, ground, maxTokens, user } = req.body || {};
+    const { prompt, ground, maxTokens, user, images } = req.body || {};
     if (!prompt) {
       res.status(400).json({ error: "prompt is required" });
       return;
+    }
+
+    // Ixtiyoriy rasmlar (o'quvchi qo'lda yechimini rasmga olib yuklaydi) — Claude vision.
+    // Rasm bo'lmasa, ilgarigidek matn-only ishlaydi.
+    let content = String(prompt);
+    if (Array.isArray(images) && images.length) {
+      const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+      const blocks = [{ type: "text", text: String(prompt) }];
+      for (const im of images.slice(0, 8)) {
+        if (!im || !im.data || !ALLOWED.includes(im.media_type)) continue;
+        if (im.label) blocks.push({ type: "text", text: "\n" + String(im.label).slice(0, 120) + ":" });
+        blocks.push({
+          type: "image",
+          source: { type: "base64", media_type: im.media_type, data: String(im.data) },
+        });
+      }
+      if (blocks.length > 1) content = blocks;
     }
 
     // 2) Kirish kerak (ism). Kiril/lotin harflar va oddiy belgilarga ruxsat.
@@ -112,7 +129,7 @@ export default async function handler(req, res) {
         system:
           "Ты — преподаватель МСФО для начинающего, по-русски, кратко и по делу. " +
           (ground || ""),
-        messages: [{ role: "user", content: String(prompt) }],
+        messages: [{ role: "user", content }],
       }),
     });
 
