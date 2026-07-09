@@ -1043,9 +1043,9 @@ function PrepExam({prog,save,track}){
       <div className="cc-view">
         <div className="cc-pvi-moto"><Flame size={16}/><span className="cc-pvi-moto-t" key={moto}>{PREP_MOTO[moto]}</span></div>
         <div className="cc-pvi-rules">
-          <span><ClipboardList size={14}/> 20 тестов · по 1 баллу</span>
-          <span><Calculator size={14}/> 5 задач · по {PREP_PROB_PTS} балла · проверяет ИИ</span>
-          <span><Clock size={14}/> 40 минут на всё</span>
+          <span><ClipboardList size={14}/> {PREP_VARIANTS[0].tests.length} тестов · по 1 баллу</span>
+          <span><Calculator size={14}/> {PREP_VARIANTS[0].problems.length} задач · по {PREP_PROB_PTS} балла · проверяет ИИ</span>
+          <span><Clock size={14}/> {PREP_VARIANTS[0].minutes} минут на всё</span>
           <span><Trophy size={14}/> порог сдачи {PREP_PASS}%</span>
         </div>
         <div className="cc-pvi-grid">
