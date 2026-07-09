@@ -372,6 +372,12 @@ html,body{margin:0;padding:0;}
 .cc-imgthumb.lg{width:auto;max-width:min(260px,100%);height:auto;max-height:200px;object-fit:contain;display:block;margin:6px 0;cursor:zoom-in;}
 .cc-imgdel{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--red);background:var(--redT);border:none;border-radius:9px;padding:6px 10px;cursor:pointer;font-family:var(--sans);}
 .cc-imgdel:hover{background:var(--red);color:#fff;}
+/* ИИ-репетитор: rasm biriktirish */
+.cc-ask-att{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.cc-askimg{width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:var(--tealT);color:var(--tealD);border:1px solid var(--teal);cursor:pointer;transition:.15s;}
+.cc-askimg:hover{background:var(--teal);color:#fff;}
+.cc-askimg.busy{opacity:.7;cursor:default;}
+.cc-msg-b .cc-imgthumb.lg{max-height:160px;margin:0 0 8px;}
 .cc-pv-ref{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;font-size:13px;color:var(--ink2);line-height:1.6;}
 .cc-pv-ref>b{color:var(--ink);display:block;margin-bottom:6px;}
 .cc-pv-step{margin:4px 0;} .cc-pv-step b{color:var(--ink);}

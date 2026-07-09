@@ -690,16 +690,53 @@ function Quiz({topic,p,setTP,track}){
 
 function Tutor({topic}){
   const [q,setQ]=useState(""); const [log,setLog]=useState([]); const [busy,setBusy]=useState(false);
-  async function ask(text){ const Q=(text||q).trim(); if(!Q||busy)return; setLog(l=>[...l,{r:"u",t:Q}]); setQ(""); setBusy(true);
-    try{ const a=await callAI(Q,topic.ground,900); setLog(l=>[...l,{r:"a",t:a}]); }catch(e){ setLog(l=>[...l,{r:"a",t:(e&&e.message)||"Не удалось получить ответ."}]); } finally{setBusy(false);} }
+  const [img,setImg]=useState(null);          // biriktirilgan rasm (data-URL)
+  const [imgBusy,setImgBusy]=useState(false);
+  const [imgErr,setImgErr]=useState("");
+  async function pick(file){
+    if(!file) return;
+    setImgErr(""); setImgBusy(true);
+    try{ setImg(await fileToImage(file)); }
+    catch(e){ setImgErr((e&&e.message)||"Не удалось загрузить изображение"); }
+    finally{ setImgBusy(false); }
+  }
+  async function ask(text){
+    const Q=(text||q).trim(); const im=img;
+    if((!Q&&!im)||busy) return;
+    setLog(l=>[...l,{r:"u",t:Q,img:im}]); setQ(""); setImg(null); setBusy(true);
+    try{
+      let prompt=Q||"Посмотри фото и помоги по нему.", images;
+      if(im){
+        const pr=dataUrlParts(im);
+        if(pr) images=[{media_type:pr.media_type,data:pr.data,label:"Фото от студента"}];
+        prompt=(Q?Q+"\n\n":"")+"К сообщению приложено ФОТО. Сначала внимательно расшифруй всё его содержимое (рукопись, условие задачи, расчёт, таблицу) — каждое число и подпись, даже если записи неаккуратные или в беспорядке; мысленно упорядочи их в логичное решение. Затем ответь по существу: объясни, проверь расчёт по теме курса и прямо укажи ошибки в числах (что написано → как верно).";
+      }
+      const a=await callAI(prompt,topic.ground,1100,images);
+      setLog(l=>[...l,{r:"a",t:a}]);
+    }catch(e){ setLog(l=>[...l,{r:"a",t:(e&&e.message)||"Не удалось получить ответ."}]); }
+    finally{setBusy(false);}
+  }
   return(
     <div className="cc-view">
-      <p className="cc-note-lead">ИИ-репетитор отвечает по теме «{topic.title}», опираясь на ваш курс.</p>
+      <p className="cc-note-lead">ИИ-репетитор отвечает по теме «{topic.title}», опираясь на ваш курс. Можно приложить <b>фото</b> задачи или своего решения — ИИ прочитает его и проверит числа.</p>
       <div className="cc-chat">
-        {log.map((m,i)=><div key={i} className={"cc-msg "+m.r}>{m.r==="a"&&<div className="cc-msg-ic"><Sparkles size={13}/></div>}<div className="cc-msg-b">{m.t}</div></div>)}
+        {log.map((m,i)=><div key={i} className={"cc-msg "+m.r}>{m.r==="a"&&<div className="cc-msg-ic"><Sparkles size={13}/></div>}<div className="cc-msg-b">{m.img&&<a href={m.img} target="_blank" rel="noreferrer"><img className="cc-imgthumb lg" src={m.img} alt="фото"/></a>}{m.t}</div></div>)}
         {busy&&<div className="cc-msg a"><div className="cc-msg-ic"><Sparkles size={13}/></div><div className="cc-msg-b"><Loader2 size={15} className="cc-spin"/></div></div>}
       </div>
-      <div className="cc-ask"><input className="cc-ask-in" placeholder={"Вопрос по теме "+topic.code+"…"} value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()}/><button className="cc-btn primary" disabled={busy||!q.trim()} onClick={()=>ask()}><Send size={16}/></button></div>
+      {(img||imgErr) && (
+        <div className="cc-ask-att">
+          {img && <span className="cc-imgprev"><img className="cc-imgthumb" src={img} alt="фото"/><button type="button" className="cc-imgdel" onClick={()=>setImg(null)}><X size={13}/> Убрать</button></span>}
+          {imgErr && <span className="cc-prep-ma bad" style={{margin:0}}><AlertTriangle size={13}/> {imgErr}</span>}
+        </div>
+      )}
+      <div className="cc-ask">
+        <label className={"cc-askimg"+(imgBusy?" busy":"")} title="Прикрепить фото">
+          <input type="file" accept="image/*" hidden disabled={imgBusy||busy} onChange={e=>{const f=e.target.files&&e.target.files[0]; e.target.value=""; pick(f);}}/>
+          {imgBusy?<Loader2 size={16} className="cc-spin"/>:<Camera size={16}/>}
+        </label>
+        <input className="cc-ask-in" placeholder={"Вопрос по теме "+topic.code+"…"} value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()}/>
+        <button className="cc-btn primary" disabled={busy||(!q.trim()&&!img)} onClick={()=>ask()}><Send size={16}/></button>
+      </div>
     </div>
   );
 }
@@ -961,10 +998,13 @@ function PrepExam({prog,save,track}){
             "\nРешение студента: "+stu;
         }).join("\n\n");
         const t=await callAI(
-          "Ты — строгий, но справедливый экзаменатор по МСФО. Проверь решения студента по "+v.problems.length+" задачам. Часть решений приложена ФОТОГРАФИЯМИ рукописного текста (изображения в конце сообщения) — внимательно прочитай почерк и извлеки все итоговые числа и шаги, даже если написано неаккуратно; если фото совсем нечитаемо — так и напиши и снизь балл. ГЛАВНОЕ: правильность ИТОГОВЫХ ЧИСЕЛ и хода решения (метод, формулы, проводки). Сверь каждое число студента с эталоном — прямо укажи, какие числа верны, а какие нет и каким должно быть верное число. Оформление, стиль и порядок слов не важны; засчитывай верные числа, даже если они записаны иначе (с пробелами, без валюты). Балл за задачу: от 0 до "+PREP_PROB_PTS+" (0 — нет решения или всё неверно; "+PREP_PROB_PTS+" — метод и все ключевые числа верны; промежуточный балл — за частично верное решение).\n\n"+parts+
-          "\n\nВерни ТОЛЬКО JSON-массив из "+v.problems.length+" объектов строго по порядку задач: [{\"n\":1,\"ball\":<0-"+PREP_PROB_PTS+">,\"fikr\":\"краткий разбор по-русски: какие числа/шаги верны, где именно ошибка и верное значение\"}]",
-          "Экзамен по курсу МСФО (IAS 2, IAS 16, IAS 23, IAS 36, IAS 37, IAS 38, IAS 40). Точная проверка чисел и метода; решения могут быть на фото рукописи.",
-          1900,
+          "Ты — опытный экзаменатор по МСФО. Проверь решения студента по "+v.problems.length+" задачам СТРОГО по протоколу из трёх шагов.\n"+
+          "ШАГ 1 — РАСШИФРОВКА. Если решение приложено ФОТО рукописи (изображения в конце сообщения): внимательно расшифруй ВСЁ содержимое фото — каждое число, расчёт, подпись, таблицу, столбик, стрелку и приписку на полях. Записи могут быть неаккуратными и в беспорядке (не по порядку, в разных углах листа) — сначала собери фрагменты в логический порядок решения и только потом оценивай. Числа с пробелами или точками (5 600, 5.600) читай как одно число; похожие цифры (1/7, 0/6, 4/9) различай по смыслу расчёта; зачёркнутое студентом не учитывай.\n"+
+          "ШАГ 2 — СОПОСТАВЛЕНИЕ. Для КАЖДОЙ задачи выпиши все числа студента и сверь с эталоном ПО ОДНОМУ: метод (формула/подход) → промежуточные расчёты → итоговые суммы → проводки. Верное число засчитывай в любом оформлении (порядок записи, валюта, сокращения не важны). Для каждого расхождения определи: это ошибка метода, арифметики или просто иная запись того же числа.\n"+
+          "ШАГ 3 — БАЛЛ. От 0 до "+PREP_PROB_PTS+": "+PREP_PROB_PTS+" — метод верен и все ключевые числа совпали (допустимы округления); 3 — метод верен, одна ключевая ошибка в числах; 2 — метод верен, но решение наполовину неверно или неполно; 1 — метод неверен, но есть верные фрагменты; 0 — решения нет или всё неверно. Если часть фото нечитаема — оцени читаемую часть и прямо напиши, что не удалось разобрать.\n\n"+parts+
+          "\n\nВерни ТОЛЬКО JSON-массив из "+v.problems.length+" объектов строго по порядку задач: [{\"n\":1,\"ball\":<0-"+PREP_PROB_PTS+">,\"fikr\":\"разбор по-русски: 1) что сделал студент — одной фразой; 2) верные числа; 3) каждая ошибка в формате «у вас X → верно Y» с кратким пояснением почему\"}]",
+          "Экзамен по курсу МСФО (IAS 2, IAS 16, IAS 23, IAS 36, IAS 37, IAS 38, IAS 40). Точная проверка чисел и метода; решения могут быть на фото рукописи — их нужно полностью расшифровать и упорядочить.",
+          2000,
           imgs.length?imgs:undefined
         );
         const arr=parseArr(t);
