@@ -241,10 +241,15 @@ export default function App(){
             <div className="cc-mtitle" style={{marginBottom:4}}>Недавно добавленные</div>
             <div className="cc-msub" style={{marginBottom:14}}>Новые разделы и темы курса — последние сверху.</div>
             <div className="cc-rlist">
+              <button className="cc-ritem" onClick={()=>{ setModal(null); const tid=TMAP["ias16"]?"ias16":TOPICS[0].id; setTopicId(tid); setTab("tutor"); setView("topic"); track("topic",(TMAP[tid]||{}).code||tid); }}>
+                <span className="cc-rico"><Camera size={16}/></span>
+                <span className="cc-rmid"><span className="cc-rtitle">Проверка решений по фото</span><span className="cc-rmeta">Сфотографируйте рукописное решение — ИИ прочитает и проверит числа (на экзамене и у репетитора)</span></span>
+                <span className="cc-rnew">новое</span>
+                <ArrowRight size={15}/>
+              </button>
               <button className="cc-ritem" onClick={()=>{ setModal(null); setView("prep"); }}>
                 <span className="cc-rico"><Target size={16}/></span>
                 <span className="cc-rmid"><span className="cc-rtitle">Подготовка к экзамену</span><span className="cc-rmeta">{PREP_VARIANTS.length} вариантов · таймер · проверка ИИ</span></span>
-                <span className="cc-rnew">новое</span>
                 <ArrowRight size={15}/>
               </button>
               {[...TOPICS].reverse().slice(0,6).map((t)=>{ const n=(t.theory||[]).length; const w=(n%10===1&&n%100!==11)?"урок":((n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"урока":"уроков"); return (
